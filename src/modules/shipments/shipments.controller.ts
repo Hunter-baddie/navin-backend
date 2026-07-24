@@ -2,6 +2,7 @@ import { ShipmentStatus } from './shipments.model.js';
 import { Request, Response } from 'express';
 import {
   getShipmentsService,
+  getShipmentByIdService,
   createShipmentService,
   patchShipmentService,
   updateShipmentStatusService,
@@ -46,6 +47,15 @@ export const getShipments = async (req: Request, res: Response) => {
     limit: currentLimit,
     total,
   });
+};
+
+export const getShipmentById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const shipment = await getShipmentByIdService(id, {
+    organizationId: req.user?.organizationId,
+    role: req.user?.role,
+  });
+  sendResponse(res, 200, true, 'Shipment retrieved', shipment);
 };
 
 export const createShipment = async (req: Request, res: Response) => {
