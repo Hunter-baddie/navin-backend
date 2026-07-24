@@ -13,6 +13,7 @@ export const webhooksRouter = Router();
 
 webhooksRouter.post(
   '/iot',
+  // PUBLIC: IoT device callbacks — authenticated via x-api-key, not JWT
   express.json({ limit: '1mb' }),
   asyncHandler(requireApiKey),
   validateRequest({ body: IotWebhookBodySchema }),
@@ -21,12 +22,7 @@ webhooksRouter.post(
 
 webhooksRouter.post(
   '/stellar',
-  express.json({
-    limit: '1mb',
-    verify: (req: express.Request, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
+  // PUBLIC: Stellar settlement callbacks — authenticated via HMAC signature, not JWT
   asyncHandler(verifyStellarSignature),
   validateRequest({ body: StellarWebhookPayloadSchema }),
   asyncHandler(handleStellarWebhookController)

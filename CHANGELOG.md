@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added shared `PASSWORD_MIN_LENGTH` / `PASSWORD_MIN_LENGTH_MESSAGE` constants used by all password Zod schemas
+- Added `STELLAR_WEBHOOK_SECRET` to `src/env.ts` and HMAC signature tests for `POST /api/webhooks/stellar`
 - Added `docs/PAGINATION.md` and shared helpers in `src/shared/utils/pagination.ts` documenting cursor vs offset conventions
 - Extended `GET /api/shipments` with `q`, `trackingNumber`, `from`/`to`, and multi-status filters plus text index on trackingNumber/origin/destination
 - Created `docs/DATABASE.md` documenting plugin architecture, index optimization strategies, and schema conventions (#309)
@@ -17,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Standardized password `minLength` to 8 across auth and users validation schemas and Swagger
+- Captured `req.rawBody` in the global JSON parser so Stellar webhook HMAC verification can sign the exact bytes received
 - Telemetry rejects simultaneous `cursor` + `page`; cursor takes precedence; pagination meta stays in `meta`
 - Anomaly and telemetry list services use shared `paginateCursor` helper
 - Updated shipment search tests and Swagger query params for the new filters
@@ -36,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Required `x-stellar-signature` on `POST /api/webhooks/stellar` and verified HMAC-SHA256 against `STELLAR_WEBHOOK_SECRET`
 - Added inline security comments explaining critical design decisions (using `// SECURITY: [Threat] — This prevents [attack] by [mechanism]` pattern):
   - In `src/shared/middleware/requireAuth.ts` (Bearer formatting, JTI token tracking/revocation checks) (#311)
   - In `src/shared/middleware/verifyStellarSignature.ts` (timingSafeEqual for preventing side-channel attacks) (#311)
