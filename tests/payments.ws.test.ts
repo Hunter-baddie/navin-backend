@@ -1,8 +1,8 @@
 import { jest, describe, beforeEach, it, expect } from '@jest/globals';
 import { PaymentStatus } from '../src/modules/payments/payments.model.js';
 
-const mockGetPaymentById = jest.fn();
-const mockUpdatePaymentStatus = jest.fn();
+const mockGetPaymentById = jest.fn<() => Promise<unknown>>();
+const mockUpdatePaymentStatus = jest.fn<() => Promise<unknown>>();
 const mockEmitPaymentStatusChange = jest.fn();
 
 await jest.unstable_mockModule('../src/modules/payments/payments.repo.js', () => ({
