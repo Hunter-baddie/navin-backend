@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE } from '../../shared/constants/index.js';
 
 export const SignupBodySchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
-  password: z.string().min(8, 'Password must be at least 8 characters long'),
+  password: z.string().min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE),
   organizationId: z.string().min(1).optional(),
 });
 
@@ -18,7 +19,7 @@ export const ForgotPasswordBodySchema = z.object({
 
 export const ResetPasswordBodySchema = z.object({
   token: z.string().min(1),
-  newPassword: z.string().min(8, 'Password must be at least 8 characters long'),
+  newPassword: z.string().min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE),
 });
 
 export const RefreshBodySchema = z.object({

@@ -111,7 +111,10 @@ paths:
   /api/webhooks/stellar:
     post:
       summary: Stellar proof-of-delivery webhook
-      description: Receives Stellar settlement callbacks for proof-of-delivery events. The webhook payload must include the transaction hash and event type, and may include an optional HMAC signature header for verification.
+      description: >
+        Receives Stellar settlement callbacks for proof-of-delivery events.
+        Requires a valid HMAC-SHA256 signature in the x-stellar-signature header,
+        computed over the raw request body using STELLAR_WEBHOOK_SECRET.
       security:
         - stellarSignature: []
       requestBody:
@@ -176,6 +179,12 @@ paths:
                         type: string
         '400':
           description: Invalid Stellar webhook payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid x-stellar-signature header
           content:
             application/json:
               schema:
@@ -720,7 +729,8 @@ paths:
                   type: string
                 password:
                   type: string
-                  minLength: 6
+                  minLength: 8
+                  description: Password (minimum 8 characters)
       responses:
         '201':
           description: Invitation accepted
@@ -2093,7 +2103,9 @@ components:
       type: apiKey
       in: header
       name: x-stellar-signature
-      description: Optional HMAC signature header for Stellar webhook verification.
+      description: >
+        Required HMAC-SHA256 hex digest of the raw request body, signed with
+        STELLAR_WEBHOOK_SECRET. Requests without a valid signature receive 401.
     bearerAuth:
       type: http
       scheme: bearer
