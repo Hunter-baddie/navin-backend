@@ -16,17 +16,20 @@ import { PaymentStatus } from '../payments/payments.model.js';
 import { validateStatusTransition } from '../../shared/constants/shipmentStateMachine.js';
 import type { BulkStatusUpdateInput } from './shipments.validation.js';
 import { offsetSkip } from '../../shared/utils/pagination.js';
-
-type BulkUpdateResult = {
-  updated: number;
-  failed: Array<{ id: string; reason: string }>;
-};
 import {
   readShipmentEtaCache,
   writeShipmentEtaCache,
   invalidateShipmentEtaCache,
   type ShipmentEtaPayload,
 } from './shipmentsEta.cache.js';
+import { isAuthorizedForShipment } from '../../infra/socket/shipmentRooms.js';
+import { ErrorCodes } from '../../shared/http/errors.js';
+import { UserRole } from '../../shared/constants/index.js';
+
+type BulkUpdateResult = {
+  updated: number;
+  failed: Array<{ id: string; reason: string }>;
+};
 
 type ShipmentListResult = {
   data: IShipment[];
@@ -242,6 +245,40 @@ export const getShipmentsService = async (params: {
   ]);
 
   return { data, page, limit, total };
+};
+
+export const getShipmentByIdService = async (
+  id: string,
+  context?: { organizationId?: string; role?: string }
+): Promise<IShipment> => {
+  const shipment = await Shipment.findById(id).lean<IShipment>();
+  if (!shipment) {
+    throw new AppError(404, 'Shipment not found', ErrorCodes.SHIPMENT_NOT_FOUND);
+  }
+
+  const isSuperAdmin = context?.role === UserRole.SUPER_ADMIN;
+  if (!isSuperAdmin) {
+    if (!context?.organizationId) {
+      throw new AppError(
+        403,
+        'Forbidden: insufficient access to shipment',
+        ErrorCodes.FORBIDDEN
+      );
+    }
+    const authorized = await isAuthorizedForShipment({
+      shipmentId: id,
+      organizationId: context.organizationId,
+    });
+    if (!authorized) {
+      throw new AppError(
+        403,
+        'Forbidden: insufficient access to shipment',
+        ErrorCodes.FORBIDDEN
+      );
+    }
+  }
+
+  return shipment;
 };
 
 /**
