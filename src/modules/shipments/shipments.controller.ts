@@ -17,7 +17,7 @@ import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
 export const getShipments = async (req: Request, res: Response) => {
   const query = req.query as unknown as GetShipmentsQuery;
-  const { status, page = 1, limit = 20, origin, destination } = query;
+  const { status, page = 1, limit = 20, origin, destination, trackingNumber, q, from, to } = query;
   // Build explicit filters object to avoid unvalidated query parameters
   const filters: Record<string, unknown> = {};
   if (req.user?.organizationId) {
@@ -34,6 +34,10 @@ export const getShipments = async (req: Request, res: Response) => {
     limit: Number(limit),
     origin,
     destination,
+    trackingNumber,
+    q,
+    from,
+    to,
     filters,
   });
 
@@ -124,19 +128,13 @@ export const exportShipments = async (req: Request, res: Response) => {
 
   if (format === 'csv') {
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="shipments-export-${dateStr}.csv"`
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="shipments-export-${dateStr}.csv"`);
     res.status(200).send(shipmentsToCSV(shipments));
     return;
   }
 
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename="shipments-export-${dateStr}.json"`
-  );
+  res.setHeader('Content-Disposition', `attachment; filename="shipments-export-${dateStr}.json"`);
   res.status(200).json(shipments);
 };
 

@@ -49,8 +49,8 @@ ShipmentSchema.index({ logisticsId: 1, createdAt: -1 });
 // Optimizes global shipment listings sorted by creation date descending with deterministic pagination.
 ShipmentSchema.index({ createdAt: -1, _id: -1 });
 
-// Multi-field text index optimizing free-text search across origin and destination locations.
-ShipmentSchema.index({ origin: 'text', destination: 'text' });
+// Multi-field text index for unified search across tracking number and locations.
+ShipmentSchema.index({ trackingNumber: 'text', origin: 'text', destination: 'text' });
 
 // Soft delete middleware
 ShipmentSchema.pre(['find', 'findOne', 'findOneAndUpdate', 'countDocuments'], function () {

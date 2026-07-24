@@ -15,6 +15,7 @@ import * as paymentsRepo from '../payments/payments.repo.js';
 import { PaymentStatus } from '../payments/payments.model.js';
 import { validateStatusTransition } from '../../shared/constants/shipmentStateMachine.js';
 import type { BulkStatusUpdateInput } from './shipments.validation.js';
+import { offsetSkip } from '../../shared/utils/pagination.js';
 
 type BulkUpdateResult = {
   updated: number;
@@ -182,30 +183,37 @@ export const findShipments = async (
 /**
  * Retrieves a paginated list of shipments using filters and optional search criteria.
  * @param {object} params - Pagination and filter parameters.
- * @param {string=} params.status - Optional shipment status filter.
- * @param {number} params.page - Page number starting at 1.
- * @param {number} params.limit - Page size.
- * @param {string=} params.origin - Optional origin substring filter.
- * @param {string=} params.destination - Optional destination substring filter.
- * @param {Record<string, unknown>} params.filters - Additional query filters.
  * @returns {Promise<ShipmentListResult>} Paginated shipment results.
  */
 export const getShipmentsService = async (params: {
-  status?: string;
+  status?: string | string[];
   page: number;
   limit: number;
   origin?: string;
   destination?: string;
+  trackingNumber?: string;
+  q?: string;
+  from?: Date;
+  to?: Date;
   filters: Record<string, unknown>;
 }): Promise<ShipmentListResult> => {
-  const { status, page, limit, origin, destination, filters } = params;
+  const { status, page, limit, origin, destination, trackingNumber, q, from, to, filters } = params;
   const query: FilterQuery<unknown> = {};
 
   if (filters.organizationId) {
     query.organizationId = filters.organizationId;
   }
 
-  if (status) query.status = status;
+  if (status) {
+    const statuses = Array.isArray(status) ? status : [status];
+    query.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
+  }
+
+  if (trackingNumber) {
+    const escaped = trackingNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    query.trackingNumber = { $regex: escaped, $options: 'i' };
+  }
+
   if (origin) {
     const escapedOrigin = origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     query.origin = { $regex: escapedOrigin, $options: 'i' };
@@ -215,7 +223,19 @@ export const getShipmentsService = async (params: {
     query.destination = { $regex: escapedDestination, $options: 'i' };
   }
 
-  const skip = (page - 1) * limit;
+  if (q) {
+    // Uses text index on trackingNumber, origin, destination
+    query.$text = { $search: q };
+  }
+
+  if (from || to) {
+    const createdAt: { $gte?: Date; $lte?: Date } = {};
+    if (from) createdAt.$gte = from;
+    if (to) createdAt.$lte = to;
+    query.createdAt = createdAt;
+  }
+
+  const skip = offsetSkip(page, limit);
   const [data, total] = await Promise.all([
     findShipments(query, skip, limit),
     Shipment.countDocuments(query),
@@ -356,6 +376,7 @@ export const updateShipmentStatusService = async (
           console.log(
             `[Shipment] Escrow released for shipment ${id}, ` +
               `tx: ${releaseResult.transactionHash}`
+          );
           logger.info(
             { shipmentId: id, transactionHash: releaseResult.transactionHash },
             'Escrow released for shipment'

@@ -15,6 +15,7 @@ import { buildHelmetMiddleware } from './config/helmet.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { usersRouter } from './modules/users/users.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
+import { organizationsRouter } from './modules/organizations/organizations.routes.js';
 import { shipmentsRouter } from './modules/shipments/shipments.routes.js';
 import { paymentsRouter } from './modules/payments/payments.routes.js';
 import { webhooksRouter } from './modules/webhooks/iot.routes.js';

@@ -11,9 +11,11 @@ export const getTelemetry = async (req: Request, res: Response) => {
   const { cursor, page, limit = 20, shipmentId, from, to } = req.query;
   const user = req.user;
   const organizationId = user?.organizationId;
+  // Cursor takes precedence; Zod rejects cursor + page together.
+  const pageNum = page ? Number(page) : undefined;
   const { data, nextCursor, hasMore } = await getTelemetryService({
     cursor: cursor as string | undefined,
-    page: page ? Number(page) : undefined,
+    page: cursor ? undefined : pageNum,
     limit: Number(limit),
     shipmentId: shipmentId as string | undefined,
     organizationId: organizationId as string | undefined,
@@ -21,11 +23,12 @@ export const getTelemetry = async (req: Request, res: Response) => {
     to: to as Date | undefined,
   });
 
-  sendResponse(res, 200, true, 'Telemetry retrieved', data, {
-    nextCursor,
-    hasMore,
-    page: page ? Number(page) : 1,
-  });
+  const meta: Record<string, unknown> = { nextCursor, hasMore };
+  if (!cursor && pageNum) {
+    meta.page = pageNum;
+  }
+
+  sendResponse(res, 200, true, 'Telemetry retrieved', data, meta);
 };
 
 export const bulkIngest = async (req: Request, res: Response) => {

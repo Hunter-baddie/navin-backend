@@ -17,7 +17,7 @@ export const TelemetryQuerySchema = z
     from: utcDateString.optional(),
     to: utcDateString.optional(),
   })
-  .refine(data => !(data.cursor && data.page), {
+  .refine(data => !(data.cursor && data.page !== undefined), {
     message: 'Use either cursor or page for pagination, not both.',
   })
   .refine(data => !(data.from && data.to && data.from > data.to), {
