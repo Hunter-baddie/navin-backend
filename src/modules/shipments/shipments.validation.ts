@@ -1,15 +1,43 @@
 import { z } from 'zod';
 import { ShipmentStatus } from './shipments.model.js';
 
+const statusFilterSchema = z
+  .string()
+  .optional()
+  .transform(value => {
+    if (!value || value.trim() === '') return undefined;
+    return value
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+  })
+  .pipe(z.array(z.nativeEnum(ShipmentStatus)).min(1).optional());
+
+const optionalNonEmptyString = z
+  .string()
+  .optional()
+  .transform(value => {
+    if (value == null || value.trim() === '') return undefined;
+    return value.trim();
+  });
+
 export const getShipmentsQuerySchema = z
   .object({
-    status: z.string().optional(),
+    status: statusFilterSchema,
     page: z.coerce.number().min(1).default(1),
     limit: z.coerce.number().min(1).max(100).default(20),
-    origin: z.string().optional(),
-    destination: z.string().optional(),
+    origin: optionalNonEmptyString,
+    destination: optionalNonEmptyString,
+    trackingNumber: optionalNonEmptyString,
+    q: optionalNonEmptyString,
+    from: z.coerce.date().optional(),
+    to: z.coerce.date().optional(),
   })
-  .strict();
+  .strict()
+  .refine(data => !(data.from && data.to && data.from > data.to), {
+    message: 'from must be <= to',
+    path: ['from'],
+  });
 
 export type GetShipmentsQuery = z.infer<typeof getShipmentsQuerySchema>;
 

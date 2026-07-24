@@ -2,6 +2,14 @@ openapi: 3.0.0
 info:
   title: Navin Backend API
   version: 1.0.0
+  description: |
+    Navin logistics/supply-chain API.
+
+    ## Pagination
+    Use **cursor** pagination (`cursor`, `limit` → `meta.nextCursor`, `meta.hasMore`) for large
+    collections (telemetry, anomalies, payments). Use **offset** pagination (`page`, `limit` →
+    `meta.page`, `meta.limit`, `meta.total`) for bounded admin lists (shipments).
+    Pagination fields always live in `meta`, never in `data`. See `docs/PAGINATION.md`.
 x-rate-limit:
   standard:
     limit: 100
@@ -1157,8 +1165,9 @@ paths:
           schema:
             type: integer
             minimum: 1
-            default: 1
-          description: Page number for offset-based pagination.
+          description: >
+            Legacy offset page number. Prefer cursor pagination for telemetry.
+            Cannot be combined with `cursor` (400 if both are sent).
         - in: query
           name: limit
           schema:
@@ -1301,7 +1310,7 @@ paths:
            description: Unauthorized
          '403':
            description: Forbidden - not SUPER_ADMIN
-   /api/organizations/{id}:
+  /api/organizations/{id}:
      get:
        summary: Get organization by ID
        description: Get a single organization. ADMIN can read own; SUPER_ADMIN can read any.
@@ -1392,8 +1401,8 @@ paths:
            description: Forbidden - not SUPER_ADMIN
          '404':
            description: Organization not found
-   /api/shipments:
-     get:
+  /api/shipments:
+    get:
       summary: Get paginated shipments with offset-based pagination
       description: Returns a paginated list of shipments. Uses offset-based pagination with page and limit parameters.
       security:
@@ -1403,8 +1412,10 @@ paths:
           name: status
           schema:
             type: string
-            enum: [CREATED, IN_TRANSIT, DELIVERED, CANCELLED]
-          description: Filter shipments by status
+          description: >
+            Filter by status. Single value or comma-separated list
+            (e.g. CREATED,IN_TRANSIT).
+          example: CREATED,IN_TRANSIT
         - in: query
           name: page
           schema:
@@ -1430,6 +1441,31 @@ paths:
           schema:
             type: string
           description: Filter by destination location (case-insensitive partial match)
+        - in: query
+          name: trackingNumber
+          schema:
+            type: string
+          description: Filter by tracking number (case-insensitive partial match)
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: >
+            Full-text search across trackingNumber, origin, and destination
+            (MongoDB text index).
+          example: NVN-123
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+          description: Include shipments created at or after this timestamp
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+          description: Include shipments created at or before this timestamp
       responses:
         '200':
           description: Paginated shipments retrieved successfully
@@ -1976,27 +2012,27 @@ components:
                 format: date-time
               description:
                 type: string
-offChainMetadata:
-           type: object
-     Organization:
-       type: object
-       properties:
-         _id:
-           type: string
-         name:
-           type: string
-         type:
-           type: string
-           enum: [ENTERPRISE, LOGISTICS]
-         settings:
-           type: object
-         createdAt:
-           type: string
-           format: date-time
-         updatedAt:
-           type: string
-           format: date-time
-     Anomaly:
+        offChainMetadata:
+          type: object
+    Organization:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [ENTERPRISE, LOGISTICS]
+        settings:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Anomaly:
       type: object
       properties:
         _id:

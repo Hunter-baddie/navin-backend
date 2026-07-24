@@ -9,14 +9,12 @@ import type {
   AnomalyAlertPayload,
   TelemetryUpdatePayload,
 } from '../../shared/types/socketEvents.js';
-import type { BulkTelemetryItem } from './telemetry.validation.js';
-import { AppError } from '../../shared/http/errors.js';
-import { pushStellarAnchorJob, pushAlertJob } from '../../infra/redis/queue.js';
 import { invalidateShipmentEtaCache } from '../shipments/shipmentsEta.cache.js';
 import type { BulkTelemetryItem, TelemetryThresholds } from './telemetry.validation.js';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import { pushStellarAnchorJob, pushAlertJob } from '../../infra/redis/queue.js';
 import logger from '../../shared/logger/logger.js';
+import { offsetSkip, paginateCursor } from '../../shared/utils/pagination.js';
 
 /**
  * Finds the active (IN_TRANSIT) shipment linked to a given sensorId.
@@ -153,20 +151,15 @@ export async function getTelemetryService(params: {
     .select('-__v -rawPayload')
     .sort({ timestamp: -1, _id: -1 });
 
-  if (page) {
-    const skip = (page - 1) * limit;
-    telemetryQuery.skip(skip).limit(limit + 1);
+  // Cursor mode is preferred; page is legacy offset-only (never combined — see Zod refine).
+  if (!cursor && page) {
+    telemetryQuery.skip(offsetSkip(page, limit)).limit(limit + 1);
   } else {
     telemetryQuery.limit(limit + 1);
   }
 
   const telemetry = await telemetryQuery.lean();
-
-  const hasMore = telemetry.length > limit;
-  const data = hasMore ? telemetry.slice(0, limit) : telemetry;
-  const nextCursor = hasMore && data.length > 0 ? data[data.length - 1]._id.toString() : null;
-
-  return { data, nextCursor, hasMore };
+  return paginateCursor(telemetry, limit);
 }
 
 /**

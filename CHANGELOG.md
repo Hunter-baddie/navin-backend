@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `docs/PAGINATION.md` and shared helpers in `src/shared/utils/pagination.ts` documenting cursor vs offset conventions
+- Extended `GET /api/shipments` with `q`, `trackingNumber`, `from`/`to`, and multi-status filters plus text index on trackingNumber/origin/destination
 - Created `docs/DATABASE.md` documenting plugin architecture, index optimization strategies, and schema conventions (#309)
 - Created `src/shared/plugins/softDeletePlugin.ts` as a reusable Mongoose plugin for soft deletion (#309)
 - Added regression test for resolving a non-existent anomaly (#299).
 
 ### Changed
 
+- Telemetry rejects simultaneous `cursor` + `page`; cursor takes precedence; pagination meta stays in `meta`
+- Anomaly and telemetry list services use shared `paginateCursor` helper
+- Updated shipment search tests and Swagger query params for the new filters
 - Updated `docs/swagger.yaml` to decouple request bodies from full response models for shipment routes:
   - Created `CreateShipmentRequest` for `POST /api/shipments` (#310)
   - Created `UploadProofRequest` for `POST /api/shipments/:id/proof` (#310)
@@ -23,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced `new Error()` with `AppError` in `anomaly.service.ts`, `shipments.service.ts`, and standardised error codes in `telemetry.service.ts` / `iot.service.ts` (#257, #258, #255).
 - Corrected Swagger response envelope for `GET /api/anomalies` and `PATCH /api/anomalies/{id}/resolve` to match the standard `{ success, message, data, meta? }` shape (#256, #299).
 - Removed `any` types from `analytics.service.ts`, `telemetry.service.ts`, `shipments.controller.ts`, and `users.model.ts`.
+
+### Fixed
+
+- Restored missing `organizationsRouter` import in `buildApp` and repaired broken `auth.controller` / Swagger YAML so pagination and search suites can boot
+- Confirmed telemetry pagination and battery-threshold anomaly tests assert auth + `data` array envelope correctly
 
 ### Security
 

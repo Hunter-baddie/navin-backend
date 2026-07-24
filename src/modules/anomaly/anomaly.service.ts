@@ -3,6 +3,7 @@ import type { FilterQuery } from 'mongoose';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import { evaluateTelemetry } from '../../services/anomaly.service.js';
 import { getRedisClient } from '../../infra/redis/connection.js';
+import { paginateCursor } from '../../shared/utils/pagination.js';
 
 interface TelemetryData {
   _id: string;
@@ -112,11 +113,7 @@ export async function getAnomaliesService(params: {
     .limit(limit + 1)
     .lean();
 
-  const hasMore = anomalies.length > limit;
-  const data = hasMore ? anomalies.slice(0, limit) : anomalies;
-  const nextCursor = hasMore && data.length > 0 ? data[data.length - 1]._id.toString() : null;
-
-  return { data, nextCursor, hasMore };
+  return paginateCursor(anomalies, limit);
 }
 
 export async function resolveAnomalyService(id: string, resolvedBy: string, note?: string) {

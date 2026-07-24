@@ -10,6 +10,7 @@ type ShipmentRecord = {
   origin: string;
   destination: string;
   status?: string;
+  createdAt?: Date;
   milestones: Record<string, unknown>[];
 } & Record<string, unknown>;
 
@@ -18,9 +19,12 @@ const shipmentsData: ShipmentRecord[] = [];
 await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', () => {
   type ShipmentQuery = {
     _id?: { $lt?: string };
-    status?: string;
+    status?: string | { $in: string[] };
     origin?: { $regex: string; $options: string };
     destination?: { $regex: string; $options: string };
+    trackingNumber?: { $regex: string; $options: string };
+    $text?: { $search: string };
+    createdAt?: { $gte?: Date; $lte?: Date };
   };
 
   const ShipmentStatus = {
@@ -33,7 +37,11 @@ await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', ()
   const applyFilters = (query: ShipmentQuery) => {
     let filtered = [...shipmentsData];
     if (query.status) {
-      filtered = filtered.filter(s => s.status === query.status);
+      if (typeof query.status === 'string') {
+        filtered = filtered.filter(s => s.status === query.status);
+      } else if (query.status.$in) {
+        filtered = filtered.filter(s => query.status && typeof query.status !== 'string' && query.status.$in.includes(s.status!));
+      }
     }
     if (query._id?.$lt) {
       filtered = filtered.filter(s => s._id < query._id!.$lt!);
@@ -45,6 +53,27 @@ await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', ()
     if (query.destination) {
       const regex = new RegExp(query.destination.$regex, query.destination.$options);
       filtered = filtered.filter(s => regex.test(s.destination));
+    }
+    if (query.trackingNumber) {
+      const regex = new RegExp(query.trackingNumber.$regex, query.trackingNumber.$options);
+      filtered = filtered.filter(s => regex.test(s.trackingNumber));
+    }
+    if (query.$text?.$search) {
+      const term = query.$text.$search.toLowerCase();
+      filtered = filtered.filter(
+        s =>
+          s.trackingNumber.toLowerCase().includes(term) ||
+          s.origin.toLowerCase().includes(term) ||
+          s.destination.toLowerCase().includes(term)
+      );
+    }
+    if (query.createdAt) {
+      filtered = filtered.filter(s => {
+        const created = s.createdAt ?? new Date(0);
+        if (query.createdAt?.$gte && created < query.createdAt.$gte) return false;
+        if (query.createdAt?.$lte && created > query.createdAt.$lte) return false;
+        return true;
+      });
     }
     return filtered;
   };
@@ -146,6 +175,7 @@ describe('Shipments Search Filters', () => {
         origin: 'New York, NY',
         destination: 'Los Angeles, CA',
         status: 'IN_TRANSIT',
+        createdAt: new Date('2026-02-01T00:00:00.000Z'),
         milestones: [],
       },
       {
@@ -154,6 +184,7 @@ describe('Shipments Search Filters', () => {
         origin: 'Chicago, IL',
         destination: 'Miami, FL',
         status: 'DELIVERED',
+        createdAt: new Date('2026-03-15T00:00:00.000Z'),
         milestones: [],
       },
       {
@@ -162,14 +193,16 @@ describe('Shipments Search Filters', () => {
         origin: 'San Francisco, CA',
         destination: 'New York, NY',
         status: 'CREATED',
+        createdAt: new Date('2026-04-01T00:00:00.000Z'),
         milestones: [],
       },
       {
         _id: '4',
-        trackingNumber: 'TRK004',
+        trackingNumber: 'NVN-123',
         origin: 'Boston, MA',
         destination: 'Seattle, WA',
         status: 'IN_TRANSIT',
+        createdAt: new Date('2026-05-01T00:00:00.000Z'),
         milestones: [],
       }
     );
@@ -260,6 +293,66 @@ describe('Shipments Search Filters', () => {
     });
   });
 
+  describe('GET /api/shipments full-text and advanced filters', () => {
+    it('should search across trackingNumber, origin, destination with q', async () => {
+      const response = await request(app)
+        .get('/api/shipments?q=NVN-123')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].trackingNumber).toBe('NVN-123');
+    });
+
+    it('should filter by trackingNumber', async () => {
+      const response = await request(app)
+        .get('/api/shipments?trackingNumber=TRK002')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].trackingNumber).toBe('TRK002');
+    });
+
+    it('should filter by createdAt date range with from/to', async () => {
+      const response = await request(app)
+        .get('/api/shipments?from=2026-01-01&to=2026-06-01')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(4);
+    });
+
+    it('should support multi-status comma-separated filtering', async () => {
+      const response = await request(app)
+        .get('/api/shipments?status=CREATED,IN_TRANSIT')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(3);
+      const statuses = response.body.data.map((s: { status: string }) => s.status);
+      expect(statuses).toEqual(expect.arrayContaining(['CREATED', 'IN_TRANSIT']));
+      expect(statuses).not.toContain('DELIVERED');
+    });
+
+    it('should return empty results for non-matching q', async () => {
+      const response = await request(app)
+        .get('/api/shipments?q=NO-MATCH-XYZ')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(0);
+    });
+
+    it('should reject invalid date range (from > to)', async () => {
+      await request(app)
+        .get('/api/shipments?from=2026-06-01&to=2026-01-01')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(400);
+    });
+  });
+
   describe('GET /api/shipments validation', () => {
     it('should accept valid query parameters', async () => {
       const response = await request(app)
@@ -310,6 +403,7 @@ describe('Shipments Search Filters', () => {
         origin: 'Test (City)',
         destination: 'Test [Destination]',
         status: 'CREATED',
+        createdAt: new Date('2026-05-15T00:00:00.000Z'),
         milestones: [],
       });
 
