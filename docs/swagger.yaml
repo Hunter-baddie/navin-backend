@@ -1783,6 +1783,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/telemetry/thresholds:
+    get:
+      summary: Get organization telemetry anomaly thresholds
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: shipmentType
+          schema:
+            type: string
+          description: Shipment category key (defaults to DEFAULT)
+      responses:
+        '200':
+          description: Threshold configuration retrieved
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    put:
+      summary: Update organization telemetry anomaly thresholds
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shipmentType:
+                  type: string
+                maxTemp:
+                  type: number
+                  nullable: true
+                minTemp:
+                  type: number
+                  nullable: true
+                maxHumidity:
+                  type: number
+                  nullable: true
+                minHumidity:
+                  type: number
+                  nullable: true
+                minBatteryLevel:
+                  type: number
+                  nullable: true
+      responses:
+        '200':
+          description: Threshold configuration updated
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — admin role required
+        '422':
+          description: Validation error
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
   /api/anomalies:
     get:
       summary: Get anomalies with pagination and filtering
