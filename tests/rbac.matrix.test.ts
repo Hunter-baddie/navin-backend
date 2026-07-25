@@ -39,6 +39,7 @@ const RBAC_MATRIX: Record<string, Role[]> = {
     UserRole.VIEWER,
     UserRole.CUSTOMER,
   ],
+  'GET /api/shipments/:id': [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER],
   'POST /api/shipments': [UserRole.ADMIN, UserRole.MANAGER],
   'PATCH /api/shipments/:id': [UserRole.ADMIN, UserRole.MANAGER],
   'DELETE /api/shipments/:id': [UserRole.SUPER_ADMIN, UserRole.ADMIN],

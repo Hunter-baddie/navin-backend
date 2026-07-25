@@ -79,6 +79,13 @@ export const ShipmentProofBodySchema = z.object({
   notes: z.string().optional(),
 });
 
+export const ShipmentTimelineQuerySchema = z.object({
+  cursor: z.string().trim().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export type ShipmentTimelineQuery = z.infer<typeof ShipmentTimelineQuerySchema>;
+
 export const ShipmentsQuerySchema = getShipmentsQuerySchema;
 
 export const ExportShipmentsQuerySchema = z.object({

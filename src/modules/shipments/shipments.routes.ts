@@ -3,6 +3,8 @@ import { asyncHandler } from '../../shared/http/asyncHandler.js';
 import { validateRequest } from '../../shared/validation/validate.js';
 import {
   getShipments,
+  getShipmentById,
+  getShipmentTimeline,
   createShipment,
   patchShipment,
   patchShipmentStatus,
@@ -23,7 +25,7 @@ import {
   ShipmentProofBodySchema,
   ShipmentStatusBodySchema,
   BulkStatusUpdateBodySchema,
-  ExportShipmentsQuerySchema,
+  ShipmentTimelineQuerySchema,
 } from './shipments.validation.js';
 
 import { UserRole } from '../../shared/constants/index.js';
@@ -45,6 +47,21 @@ shipmentsRouter.get(
   requireRole(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER),
   validate({ query: getShipmentsQuerySchema }),
   asyncHandler(getShipments)
+);
+
+shipmentsRouter.get(
+  '/:id/timeline',
+  requireAuth,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER),
+  validateRequest({ params: ShipmentIdParamSchema, query: ShipmentTimelineQuerySchema }),
+  asyncHandler(getShipmentTimeline)
+);
+shipmentsRouter.get(
+  '/:id',
+  requireAuth,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER),
+  validateRequest({ params: ShipmentIdParamSchema }),
+  asyncHandler(getShipmentById)
 );
 shipmentsRouter.post(
   '/',
