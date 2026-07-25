@@ -26,6 +26,11 @@ await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', ()
   type ShipmentQuery = { _id?: { $lt?: PrimitiveId }; status?: string };
   type FindChain = {
     sort: () => {
+      skip: (s: number) => {
+        limit: (l: number) => {
+          lean: () => Promise<ShipmentRecord[]>;
+        };
+      };
       limit: (l: number) => {
         lean: () => Promise<ShipmentRecord[]>;
       };
@@ -34,7 +39,7 @@ await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', ()
   type ShipmentCtor = {
     new (doc: ShipmentInput): ShipmentRecord;
     find: (query?: ShipmentQuery) => FindChain;
-    countDocuments: (query?: { status?: string }) => Promise<number>;
+    countDocuments: (query?: ShipmentQuery) => Promise<number>;
     deleteMany: () => Promise<void>;
     create: (doc: ShipmentInput) => Promise<ShipmentRecord>;
     findById: (
@@ -55,12 +60,18 @@ await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', ()
     this.milestones = doc.milestones || [];
   } as unknown as ShipmentCtor;
 
+  /** Shared filter semantics for find() and countDocuments() (Issue #252). */
+  const matchesQuery = (d: ShipmentRecord, query: ShipmentQuery = {}): boolean => {
+    const cursor = query._id?.$lt;
+    const status = query.status;
+    if (status && d.status !== status) return false;
+    if (cursor !== undefined && !(Number(d._id) < Number(cursor))) return false;
+    return true;
+  };
+
   ShipmentConstructor.find = (query = {}) => {
-    const cursor = query?._id?.$lt;
-    const status = query?.status;
     const arr = shipmentsData
-      .filter(d => (status ? d.status === status : true))
-      .filter(d => (cursor ? Number(d._id) < Number(cursor) : true))
+      .filter(d => matchesQuery(d, query))
       .sort((a, b) => Number(b._id) - Number(a._id));
 
     return {
@@ -77,10 +88,8 @@ await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', ()
     };
   };
 
-  ShipmentConstructor.countDocuments = query =>
-    Promise.resolve(
-      shipmentsData.filter(d => !query || !query.status || d.status === query.status).length
-    );
+  ShipmentConstructor.countDocuments = (query = {}) =>
+    Promise.resolve(shipmentsData.filter(d => matchesQuery(d, query)).length);
 
   ShipmentConstructor.deleteMany = () => {
     shipmentsData.length = 0;
@@ -216,14 +225,18 @@ describe('Shipments API (mocked DB)', () => {
       .set('Authorization', `Bearer ${authToken}`);
     expect(first.status).toBe(200);
     expect(first.body.data).toHaveLength(5);
-    expect(first.body.meta.total).toBe(15);
     expect(first.body.meta.page).toBe(1);
+    expect(first.body.meta.limit).toBe(5);
+    expect(first.body.meta.total).toBe(15);
 
     const second = await request(app)
       .get('/api/shipments?limit=5&page=2')
       .set('Authorization', `Bearer ${authToken}`);
     expect(second.status).toBe(200);
     expect(second.body.data).toHaveLength(5);
+    expect(second.body.meta.page).toBe(2);
+    expect(second.body.meta.limit).toBe(5);
+    expect(second.body.meta.total).toBe(15);
     const firstIds = first.body.data.map((s: { _id: string }) => s._id);
     const secondIds = second.body.data.map((s: { _id: string }) => s._id);
     expect(firstIds.filter((id: string) => secondIds.includes(id))).toHaveLength(0);
@@ -253,6 +266,9 @@ describe('Shipments API (mocked DB)', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.length).toBe(1);
     expect(res.body.data[0].status).toBe('IN_TRANSIT');
+    expect(res.body.meta.total).toBe(1);
+    expect(res.body.meta.page).toBe(1);
+    expect(res.body.meta.limit).toBe(20);
   });
 
   it('should append milestone on status change and record user/wallet', async () => {

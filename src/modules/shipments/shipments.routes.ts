@@ -4,6 +4,7 @@ import { validateRequest } from '../../shared/validation/validate.js';
 import {
   getShipments,
   getShipmentById,
+  getShipmentTimeline,
   createShipment,
   patchShipment,
   patchShipmentStatus,
@@ -24,7 +25,7 @@ import {
   ShipmentProofBodySchema,
   ShipmentStatusBodySchema,
   BulkStatusUpdateBodySchema,
-  ExportShipmentsQuerySchema,
+  ShipmentTimelineQuerySchema,
 } from './shipments.validation.js';
 
 import { UserRole } from '../../shared/constants/index.js';

@@ -120,6 +120,36 @@ interface StatusUpdatePayload {
 }
 ```
 
+### `payment_status_changed`
+
+Emitted when `updatePaymentStatusService` successfully updates a payment (for example `Pending` → `Escrowed` or `Released`). Only sockets joined to the shipment room for `shipmentId` receive the event.
+
+Payload schema:
+
+```ts
+interface PaymentStatusPayload {
+  paymentId: string;
+  shipmentId: string;
+  oldStatus: string;
+  newStatus: string;
+  amount: number;
+  timestamp: string; // ISO 8601 UTC
+}
+```
+
+Example:
+
+```json
+{
+  "paymentId": "64f1c2...",
+  "shipmentId": "64f1a0...",
+  "oldStatus": "Pending",
+  "newStatus": "Released",
+  "amount": 1500,
+  "timestamp": "2026-07-24T21:00:00.000Z"
+}
+```
+
 ### `room_joined`
 
 Emitted after the client successfully joins a shipment room.
@@ -170,3 +200,4 @@ Payload example:
 - The Socket.IO flow is implemented in `src/infra/socket/io.ts`.
 - Room management helper logic is in `src/infra/socket/shipmentRooms.ts`.
 - Payload schemas are defined in `src/shared/types/socketEvents.ts`.
+- Payment status updates emit `payment_status_changed` from `updatePaymentStatusService` in `src/modules/payments/payments.service.ts`.

@@ -4,6 +4,7 @@ import { PaymentStatus } from './payments.model.js';
 import type { IPayment } from './payments.model.js';
 import type { CreatePaymentInput, UpdatePaymentStatusInput } from './payments.validation.js';
 import { getStellarExplorerUrl } from '../../services/stellar.service.js';
+import { emitPaymentStatusChange } from '../../infra/socket/io.js';
 
 function augmentPayment(payment: IPayment): IPayment & { explorerUrl?: string } {
   return {
@@ -88,10 +89,20 @@ export async function updatePaymentStatusService(id: string, input: UpdatePaymen
     throw new AppError(404, 'Payment not found', ErrorCodes.PAYMENT_NOT_FOUND);
   }
 
+  const oldStatus = payment.status;
   const updated = await paymentsRepo.updatePaymentStatus(id, input.status, input.stellarTxHash);
   if (!updated) {
     throw new AppError(500, 'Failed to update payment status', 'PAYMENT_UPDATE_FAILED');
   }
+
+  emitPaymentStatusChange(updated.shipmentId.toString(), {
+    paymentId: updated._id.toString(),
+    shipmentId: updated.shipmentId.toString(),
+    oldStatus,
+    newStatus: updated.status,
+    amount: updated.amount,
+    timestamp: new Date().toISOString(),
+  });
 
   return augmentPayment(updated);
 }

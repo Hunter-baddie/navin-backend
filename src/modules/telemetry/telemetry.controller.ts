@@ -1,11 +1,12 @@
 import type { Request, Response } from 'express';
+import { getTelemetryService, bulkIngestTelemetry } from './telemetry.service.js';
 import {
-  getTelemetryService,
-  bulkIngestTelemetry,
-  getTelemetryThresholds,
-} from './telemetry.service.js';
+  getOrgTelemetryThresholdsService,
+  updateOrgTelemetryThresholdsService,
+} from './telemetryThreshold.service.js';
 import { sendResponse } from '../../shared/http/sendResponse.js';
 import type { BulkTelemetryBody } from './telemetry.validation.js';
+import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
 export const getTelemetry = async (req: Request, res: Response) => {
   const { cursor, page, limit = 20, shipmentId, from, to } = req.query;
@@ -39,7 +40,23 @@ export const bulkIngest = async (req: Request, res: Response) => {
   sendResponse(res, 201, true, 'Bulk telemetry ingested', result);
 };
 
-export const getThresholds = async (req: Request, res: Response) => {
-  const data = getTelemetryThresholds();
-  sendResponse(res, 200, true, 'Thresholds retrieved', data);
+export const getTelemetryThresholds = async (req: Request, res: Response) => {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) {
+    throw new AppError(403, 'Organization context required', ErrorCodes.FORBIDDEN);
+  }
+
+  const shipmentType = req.query.shipmentType as string | undefined;
+  const result = await getOrgTelemetryThresholdsService(organizationId, shipmentType);
+  sendResponse(res, 200, true, 'Telemetry thresholds retrieved', result);
+};
+
+export const putTelemetryThresholds = async (req: Request, res: Response) => {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) {
+    throw new AppError(403, 'Organization context required', ErrorCodes.FORBIDDEN);
+  }
+
+  const result = await updateOrgTelemetryThresholdsService(organizationId, req.body);
+  sendResponse(res, 200, true, 'Telemetry thresholds updated', result);
 };

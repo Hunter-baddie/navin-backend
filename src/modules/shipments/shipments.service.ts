@@ -6,6 +6,7 @@ import { UserModel } from '../users/users.model.js';
 import { emitStatusUpdate } from '../../infra/socket/io.js';
 import { Anomaly } from '../anomaly/anomaly.model.js';
 import { Telemetry } from '../telemetry/telemetry.model.js';
+import { TelemetryAnchorStatus } from '../../shared/types/telemetry.js';
 import { AppError } from '../../shared/http/errors.js';
 import { IShipment, ShipmentStatus } from '../../shared/types/shipment.js';
 import { auditLog } from '../../shared/utils/auditLog.js';
@@ -279,6 +280,136 @@ export const getShipmentByIdService = async (
   }
 
   return shipment;
+};
+
+export type ShipmentTimelineEventType =
+  | 'STATUS_CHANGE'
+  | 'TELEMETRY_ANCHORED'
+  | 'ANOMALY_DETECTED'
+  | 'PROOF_UPLOADED';
+
+export interface ShipmentTimelineEvent {
+  type: ShipmentTimelineEventType;
+  timestamp: string;
+  description: string;
+  metadata: Record<string, unknown>;
+}
+
+type TimelineEventWithCursor = ShipmentTimelineEvent & { cursorKey: string };
+
+function buildTimelineCursorKey(timestamp: string, suffix: string): string {
+  return `${timestamp}|${suffix}`;
+}
+
+export const getShipmentTimelineService = async (
+  id: string,
+  params: { cursor?: string; limit: number; organizationId?: string; role?: string }
+): Promise<{ data: ShipmentTimelineEvent[]; nextCursor: string | null; hasMore: boolean }> => {
+  const shipment = await getShipmentByIdService(id, {
+    organizationId: params.organizationId,
+    role: params.role,
+  });
+
+  const events: TimelineEventWithCursor[] = [];
+
+  for (const milestone of shipment.milestones ?? []) {
+    const timestamp = new Date(milestone.timestamp).toISOString();
+    events.push({
+      type: 'STATUS_CHANGE',
+      timestamp,
+      description: milestone.description ?? `Status changed to ${milestone.name}`,
+      metadata: {
+        status: milestone.name,
+        userId: milestone.userId,
+        walletAddress: milestone.walletAddress,
+      },
+      cursorKey: buildTimelineCursorKey(timestamp, `status-${milestone.name}`),
+    });
+  }
+
+  const proof = shipment.deliveryProof as
+    | {
+        url?: string;
+        recipientSignatureName?: string;
+        notes?: string;
+        uploadedAt?: Date | string;
+      }
+    | undefined;
+
+  if (proof?.uploadedAt) {
+    const timestamp = new Date(proof.uploadedAt).toISOString();
+    events.push({
+      type: 'PROOF_UPLOADED',
+      timestamp,
+      description: 'Proof of delivery uploaded',
+      metadata: {
+        url: proof.url,
+        recipientSignatureName: proof.recipientSignatureName,
+        notes: proof.notes,
+      },
+      cursorKey: buildTimelineCursorKey(timestamp, 'proof'),
+    });
+  }
+
+  const [telemetryRows, anomalyRows] = await Promise.all([
+    Telemetry.find({ shipmentId: id, anchorStatus: TelemetryAnchorStatus.ANCHORED }).lean(),
+    Anomaly.find({ shipmentId: id }).lean(),
+  ]);
+
+  for (const row of telemetryRows) {
+    const timestamp = new Date(row.timestamp).toISOString();
+    events.push({
+      type: 'TELEMETRY_ANCHORED',
+      timestamp,
+      description: 'Telemetry record anchored on Stellar',
+      metadata: {
+        telemetryId: row._id.toString(),
+        stellarTxHash: row.stellarTxHash,
+        dataHash: row.dataHash,
+      },
+      cursorKey: buildTimelineCursorKey(timestamp, `telemetry-${row._id.toString()}`),
+    });
+  }
+
+  for (const row of anomalyRows) {
+    const timestamp = new Date(row.timestamp).toISOString();
+    events.push({
+      type: 'ANOMALY_DETECTED',
+      timestamp,
+      description: row.message,
+      metadata: {
+        anomalyId: row._id.toString(),
+        type: row.type,
+        severity: row.severity,
+        resolved: row.resolved,
+      },
+      cursorKey: buildTimelineCursorKey(timestamp, `anomaly-${row._id.toString()}`),
+    });
+  }
+
+  events.sort((a, b) => {
+    const byTime = a.timestamp.localeCompare(b.timestamp);
+    if (byTime !== 0) return byTime;
+    return a.cursorKey.localeCompare(b.cursorKey);
+  });
+
+  let startIndex = 0;
+  if (params.cursor) {
+    const cursorIndex = events.findIndex(event => event.cursorKey === params.cursor);
+    startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+  }
+
+  const page = events.slice(startIndex, startIndex + params.limit + 1);
+  const hasMore = page.length > params.limit;
+  const pageEvents = hasMore ? page.slice(0, params.limit) : page;
+  const nextCursor =
+    hasMore && pageEvents.length > 0
+      ? pageEvents[pageEvents.length - 1].cursorKey
+      : null;
+
+  const data = pageEvents.map(({ cursorKey: _cursorKey, ...event }) => event);
+
+  return { data, nextCursor, hasMore };
 };
 
 /**

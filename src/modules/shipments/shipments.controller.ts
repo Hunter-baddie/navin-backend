@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import {
   getShipmentsService,
   getShipmentByIdService,
+  getShipmentTimelineService,
   createShipmentService,
   patchShipmentService,
   updateShipmentStatusService,
@@ -13,7 +14,7 @@ import {
   shipmentsToCSV,
 } from './shipments.service.js';
 import { sendResponse } from '../../shared/http/sendResponse.js';
-import type { GetShipmentsQuery, ExportShipmentsQuery } from './shipments.validation.js';
+import type { GetShipmentsQuery, ExportShipmentsQuery, ShipmentTimelineQuery } from './shipments.validation.js';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
 export const getShipments = async (req: Request, res: Response) => {
@@ -56,6 +57,19 @@ export const getShipmentById = async (req: Request, res: Response) => {
     role: req.user?.role,
   });
   sendResponse(res, 200, true, 'Shipment retrieved', shipment);
+};
+
+export const getShipmentTimeline = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const query = req.query as unknown as ShipmentTimelineQuery;
+  const { cursor, limit = 20 } = query;
+  const { data, nextCursor, hasMore } = await getShipmentTimelineService(id, {
+    cursor,
+    limit: Number(limit),
+    organizationId: req.user?.organizationId,
+    role: req.user?.role,
+  });
+  sendResponse(res, 200, true, 'Shipment timeline retrieved', data, { nextCursor, hasMore });
 };
 
 export const createShipment = async (req: Request, res: Response) => {
