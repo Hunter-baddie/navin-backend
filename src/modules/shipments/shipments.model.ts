@@ -12,6 +12,27 @@ const MilestoneSchema = new Schema({
 
 MilestoneSchema.plugin(isoDatePlugin);
 
+const DisputeSchema = new Schema(
+  {
+    referenceNumber: { type: String, required: true },
+    status: {
+      type: String,
+      enum: ['PENDING', 'ESCROWED', 'RELEASED', 'DISPUTED', 'FAILED'],
+      default: 'PENDING',
+    },
+    type: {
+      type: String,
+      enum: ['WRONG_GOODS', 'DAMAGED', 'NOT_DELIVERED', 'PAYMENT_DISAGREEMENT', 'OTHER'],
+      required: true,
+    },
+    description: { type: String, required: true },
+    evidenceUrl: { type: String },
+  },
+  { timestamps: true }
+);
+
+DisputeSchema.plugin(isoDatePlugin);
+
 const ShipmentSchema = new Schema(
   {
     trackingNumber: { type: String, required: true, unique: true },
@@ -20,6 +41,8 @@ const ShipmentSchema = new Schema(
     enterpriseId: { type: Types.ObjectId, ref: 'Enterprise', required: true },
     logisticsId: { type: Types.ObjectId, ref: 'Logistics', required: true },
     status: { type: String, enum: Object.values(ShipmentStatus), default: ShipmentStatus.CREATED },
+    priority: { type: String, enum: ['URGENT', 'STANDARD', 'ECONOMY'], default: 'STANDARD' },
+    expectedDelivery: { type: Date },
     milestones: { type: [MilestoneSchema], default: [] },
     offChainMetadata: { type: Schema.Types.Mixed },
     stellarTokenId: { type: String },
@@ -30,6 +53,7 @@ const ShipmentSchema = new Schema(
       notes: { type: String },
       uploadedAt: { type: Date },
     },
+    disputes: { type: [DisputeSchema], default: [] },
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
