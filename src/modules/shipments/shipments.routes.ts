@@ -50,13 +50,6 @@ shipmentsRouter.get(
 );
 
 shipmentsRouter.get(
-  '/:id/timeline',
-  requireAuth,
-  requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER),
-  validateRequest({ params: ShipmentIdParamSchema, query: ShipmentTimelineQuerySchema }),
-  asyncHandler(getShipmentTimeline)
-);
-shipmentsRouter.get(
   '/:id',
   requireAuth,
   requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER),
