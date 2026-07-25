@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, afterAll } from '@jest/globals';
+import { Types } from 'mongoose';
 import { connectMongo } from '../src/infra/mongo/connection.js';
 import { Anomaly } from '../src/modules/anomaly/anomaly.model.js';
 import { Shipment } from '../src/modules/shipments/shipments.model.js';
@@ -35,7 +36,7 @@ async function cleanupResolvedAnomalies(retentionDays: number = RETENTION_DAYS):
 }
 
 describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', () => {
-  let shipment: any;
+  let shipment: InstanceType<typeof Shipment>;
 
   beforeEach(async () => {
     await connectMongo(process.env.MONGO_URI!);
@@ -46,8 +47,8 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       trackingNumber: 'CLEANUP-TEST-001',
       origin: 'Warehouse A',
       destination: 'Store B',
-      enterpriseId: '507f1f77bcf86cd799439011',
-      logisticsId: '507f1f77bcf86cd799439012',
+      enterpriseId: new Types.ObjectId('507f1f77bcf86cd799439011'),
+      logisticsId: new Types.ObjectId('507f1f77bcf86cd799439012'),
     });
   });
 
@@ -63,7 +64,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       oldDate.setDate(oldDate.getDate() - 100);
 
       const oldAnomaly = await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: oldDate,
         type: 'BATTERY_LOW',
         severity: 'MEDIUM',
@@ -73,7 +74,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
 
       // Manually update updatedAt to be old as well (bypass Mongoose middleware)
       await Anomaly.collection.updateOne(
-        { _id: oldAnomaly._id },
+        { _id: new Types.ObjectId(oldAnomaly._id) },
         { $set: { updatedAt: oldDate } }
       );
 
@@ -96,7 +97,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       oldDate.setDate(oldDate.getDate() - 100);
 
       await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: oldDate,
         type: 'TEMPERATURE_EXCEEDED',
         severity: 'HIGH',
@@ -122,7 +123,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       const today = new Date();
 
       await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: today,
         type: 'HUMIDITY_EXCEEDED',
         severity: 'MEDIUM',
@@ -149,7 +150,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       boundaryDate.setDate(boundaryDate.getDate() - 89);
 
       const boundaryAnomaly = await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: boundaryDate,
         type: 'BATTERY_LOW',
         severity: 'LOW',
@@ -159,7 +160,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
 
       // Manually update updatedAt to be 89 days ago
       await Anomaly.collection.updateOne(
-        { _id: boundaryAnomaly._id },
+        { _id: new Types.ObjectId(boundaryAnomaly._id) },
         { $set: { updatedAt: boundaryDate } }
       );
 
@@ -183,7 +184,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       oldDate.setMinutes(oldDate.getMinutes() - 1);
 
       const oldAnomaly = await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: oldDate,
         type: 'TEMPERATURE_BELOW_MIN',
         severity: 'HIGH',
@@ -193,7 +194,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
 
       // Manually update updatedAt to be 90 days and 1 minute ago
       await Anomaly.collection.updateOne(
-        { _id: oldAnomaly._id },
+        { _id: new Types.ObjectId(oldAnomaly._id) },
         { $set: { updatedAt: oldDate } }
       );
 
@@ -216,7 +217,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
 
       // Create old resolved anomaly (should be deleted)
       const oldResolved = await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: oldDate,
         type: 'BATTERY_LOW',
         severity: 'MEDIUM',
@@ -226,7 +227,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
 
       // Create old unresolved anomaly (should NOT be deleted)
       await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: oldDate,
         type: 'TEMPERATURE_EXCEEDED',
         severity: 'HIGH',
@@ -237,7 +238,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       // Create recent resolved anomaly (should NOT be deleted)
       const today = new Date();
       await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: today,
         type: 'HUMIDITY_EXCEEDED',
         severity: 'MEDIUM',
@@ -246,7 +247,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       });
 
       // Manually update old resolved updatedAt
-      await Anomaly.collection.updateOne({ _id: oldResolved._id }, { $set: { updatedAt: oldDate } });
+      await Anomaly.collection.updateOne({ _id: new Types.ObjectId(oldResolved._id) }, { $set: { updatedAt: oldDate } });
 
       // Verify we have 3 anomalies
       let count = await Anomaly.countDocuments();
@@ -278,7 +279,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       oldDate.setDate(oldDate.getDate() - 40); // 40 days ago
 
       const oldAnomaly = await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: oldDate,
         type: 'BATTERY_LOW',
         severity: 'MEDIUM',
@@ -286,7 +287,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
         resolved: true,
       });
 
-      await Anomaly.collection.updateOne({ _id: oldAnomaly._id }, { $set: { updatedAt: oldDate } });
+      await Anomaly.collection.updateOne({ _id: new Types.ObjectId(oldAnomaly._id) }, { $set: { updatedAt: oldDate } });
 
       // With 30-day retention, should be deleted (40 days > 30 days)
       const deletedCount = await cleanupResolvedAnomalies(30);
@@ -298,7 +299,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       oldDate.setDate(oldDate.getDate() - 100); // 100 days ago
 
       const oldAnomaly = await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: oldDate,
         type: 'BATTERY_LOW',
         severity: 'MEDIUM',
@@ -306,7 +307,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
         resolved: true,
       });
 
-      await Anomaly.updateOne({ _id: oldAnomaly._id }, { updatedAt: oldDate });
+      await Anomaly.updateOne({ _id: new Types.ObjectId(oldAnomaly._id) }, { updatedAt: oldDate });
 
       // With 180-day retention, should NOT be deleted (100 days < 180 days)
       const deletedCount = await cleanupResolvedAnomalies(180);
@@ -328,7 +329,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       oldDate.setDate(oldDate.getDate() - 100);
 
       await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: oldDate,
         type: 'BATTERY_LOW',
         severity: 'MEDIUM',
@@ -344,7 +345,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       const today = new Date();
 
       await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: today,
         type: 'BATTERY_LOW',
         severity: 'MEDIUM',
@@ -364,7 +365,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       const anomalies = [];
       for (let i = 0; i < 100; i++) {
         anomalies.push({
-          shipmentId: shipment._id,
+          shipmentId: shipment._id.toString(),
           timestamp: oldDate,
           type: 'BATTERY_LOW',
           severity: 'MEDIUM',
@@ -400,7 +401,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       oldDate.setDate(oldDate.getDate() - 100);
 
       const oldAnomaly = await Anomaly.create({
-        shipmentId: shipment._id,
+        shipmentId: shipment._id.toString(),
         timestamp: oldDate,
         type: 'BATTERY_LOW',
         severity: 'MEDIUM',
@@ -413,7 +414,7 @@ describe('Issue #169: Automated Cleanup Job for Historical Resolved Anomalies', 
       expect(beforeCleanup).toBeDefined();
 
       // Manually update timestamp to be old
-      await Anomaly.collection.updateOne({ _id: oldAnomaly._id }, { $set: { updatedAt: oldDate } });
+      await Anomaly.collection.updateOne({ _id: new Types.ObjectId(oldAnomaly._id) }, { $set: { updatedAt: oldDate } });
 
       // Run cleanup with explicit retention days
       const deletedCount = await cleanupResolvedAnomalies(90);

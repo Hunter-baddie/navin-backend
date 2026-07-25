@@ -2,16 +2,16 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', () => ({
   Shipment: {
-    find: jest.fn().mockReturnValue({
-      sort: jest.fn().mockReturnValue({
-        skip: jest.fn().mockReturnValue({
-          limit: jest.fn().mockReturnValue({
-            lean: jest.fn().mockResolvedValue([]),
+    find: jest.fn<any>().mockReturnValue({
+      sort: jest.fn<any>().mockReturnValue({
+        skip: jest.fn<any>().mockReturnValue({
+          limit: jest.fn<any>().mockReturnValue({
+            lean: jest.fn<any>().mockResolvedValue([]),
           }),
         }),
       }),
     }),
-    countDocuments: jest.fn().mockResolvedValue(0),
+    countDocuments: jest.fn<any>().mockResolvedValue(0),
   },
   ShipmentStatus: {
     CREATED: 'CREATED',
@@ -65,15 +65,15 @@ describe('Issue #267: No ...filters spread into MongoDB query', () => {
     ShipmentMock.countDocuments.mockReset();
 
     const chain = {
-      sort: jest.fn().mockReturnValue({
-        skip: jest.fn().mockReturnValue({
-          limit: jest.fn().mockReturnValue({
-            lean: jest.fn().mockResolvedValue([]),
+      sort: jest.fn<any>().mockReturnValue({
+        skip: jest.fn<any>().mockReturnValue({
+          limit: jest.fn<any>().mockReturnValue({
+            lean: jest.fn<any>().mockResolvedValue([]),
           }),
         }),
       }),
     };
-    ShipmentMock.find.mockReturnValue(chain);
+    ShipmentMock.find.mockReturnValue(chain as unknown as ReturnType<typeof ShipmentMock.find>);
     ShipmentMock.countDocuments.mockResolvedValue(0);
   });
 
@@ -100,7 +100,7 @@ describe('Issue #267: No ...filters spread into MongoDB query', () => {
       },
     });
 
-    const query = ShipmentMock.find.mock.calls[0][0];
+    const query = ShipmentMock.find.mock.calls[0][0] as Record<string, unknown>;
     expect(query).not.toHaveProperty('maliciousField');
     expect(query).not.toHaveProperty('anotherDangerous');
     expect(query).toHaveProperty('organizationId', 'org-123');
@@ -113,7 +113,7 @@ describe('Issue #267: No ...filters spread into MongoDB query', () => {
       filters: {},
     });
 
-    const query = ShipmentMock.find.mock.calls[0][0];
+    const query = ShipmentMock.find.mock.calls[0][0] as Record<string, unknown>;
     expect(query).toEqual({});
   });
 
@@ -127,7 +127,7 @@ describe('Issue #267: No ...filters spread into MongoDB query', () => {
       filters: { organizationId: 'org-456' },
     });
 
-    const query = ShipmentMock.find.mock.calls[0][0];
+    const query = ShipmentMock.find.mock.calls[0][0] as Record<string, unknown>;
     expect(query.organizationId).toBe('org-456');
     expect(query.status).toBe('CREATED');
     expect(query.origin).toEqual({ $regex: 'Warehouse A', $options: 'i' });

@@ -60,7 +60,7 @@ describe('POST /api/webhooks/iot', () => {
       updateTelemetryAnchor: jest.fn(),
       markTelemetryAnchorFailed: jest.fn(),
       getTelemetryService: jest.fn(),
-      bulkIngestTelemetry: jest.fn().mockResolvedValue([]),
+      bulkIngestTelemetry: jest.fn<any>().mockResolvedValue([]),
       getTelemetryThresholds: jest
         .fn()
         .mockReturnValue({ minBatteryLevel: 20, maxTemperature: 25, maxHumidity: 80 }),
