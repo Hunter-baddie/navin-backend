@@ -14,4 +14,13 @@ export const config = {
   allowedOrigins,
   redisUrl: env.REDIS_URL,
   corsOrigin: env.CORS_ORIGIN,
+  frontendUrl: env.FRONTEND_URL,
+  smtp: {
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    user: env.SMTP_USER,
+    pass: env.SMTP_PASS,
+    from: env.SMTP_FROM,
+  },
+  sendgridApiKey: env.SENDGRID_API_KEY,
 } as const;
