@@ -67,6 +67,7 @@ export const ErrorCodes = {
   STELLAR_CONFIG: 'ERR_STELLAR_CONFIG',
   STELLAR_INVALID_HASH: 'ERR_STELLAR_INVALID_HASH',
   RATE_LIMIT_EXCEEDED: 'ERR_RATE_LIMIT_EXCEEDED',
+  LEDGER_BLOCK_NOT_FOUND: 'ERR_LEDGER_BLOCK_NOT_FOUND',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

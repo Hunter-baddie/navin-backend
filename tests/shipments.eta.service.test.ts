@@ -63,6 +63,10 @@ await jest.unstable_mockModule('../src/modules/shipments/shipmentsEta.cache.js',
   invalidateShipmentEtaCache: mockInvalidateShipmentEtaCache,
 }));
 
+await jest.unstable_mockModule('../src/modules/ledger/ledger.service.js', () => ({
+  createLedgerBlockService: jest.fn(),
+}));
+
 const { getShipmentEtaService } = await import('../src/modules/shipments/shipments.service.js');
 
 function setupShipment(shipment: ShipmentLean | null): void {

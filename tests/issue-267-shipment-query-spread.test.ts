@@ -55,6 +55,10 @@ await jest.unstable_mockModule('../src/services/stellar.service.js', () => ({
   releaseEscrow: jest.fn(),
 }));
 
+await jest.unstable_mockModule('../src/modules/ledger/ledger.service.js', () => ({
+  createLedgerBlockService: jest.fn(),
+}));
+
 const { getShipmentsService } = await import('../src/modules/shipments/shipments.service.js');
 const shipmentsModel = await import('../src/modules/shipments/shipments.model.js');
 const ShipmentMock = shipmentsModel.Shipment as unknown as { find: jest.Mock; countDocuments: jest.Mock };

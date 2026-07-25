@@ -1793,7 +1793,7 @@ paths:
                   description: Array of shipment IDs to update (max 50)
                 status:
                   type: string
-                  enum: [CREATED, IN_TRANSIT, DELIVERED, CANCELLED]
+                  enum: [CREATED, PICKUP_CONFIRMED, IN_TRANSIT, CUSTOMS_CLEARED, OUT_FOR_DELIVERY, DELIVERED, SETTLEMENT_INITIATED, SETTLEMENT_COMPLETED, CANCELLED]
       responses:
         '200':
           description: Bulk status update completed
@@ -2044,6 +2044,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/ledger/blocks:
+    get:
+      summary: List ledger blocks
+      description: Returns a cursor-paginated list of ledger blocks, optionally filtered by shipment or event type.
+      tags:
+        - Ledger
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: shipmentId
+          in: query
+          schema:
+            type: string
+          description: Filter by shipment ObjectId
+        - name: eventType
+          in: query
+          schema:
+            $ref: '#/components/schemas/MilestoneEvent'
+          description: Filter by milestone event type
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of blocks to return
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: Cursor for the next page
+      responses:
+        '200':
+          description: Ledger blocks retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LedgerBlock'
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      hasMore:
+                        type: boolean
+                      nextCursor:
+                        type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient role
+  /api/ledger/blocks/{id}:
+    get:
+      summary: Get a ledger block by ID
+      description: Retrieves a single ledger block by its ObjectId.
+      tags:
+        - Ledger
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Ledger block ObjectId
+      responses:
+        '200':
+          description: Ledger block retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/LedgerBlock'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient role
+        '404':
+          description: Ledger block not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     ErrorResponse:
@@ -2096,7 +2196,7 @@ components:
       properties:
         status:
           type: string
-          enum: [CREATED, IN_TRANSIT, DELIVERED, CANCELLED]
+          enum: [CREATED, PICKUP_CONFIRMED, IN_TRANSIT, CUSTOMS_CLEARED, OUT_FOR_DELIVERY, DELIVERED, SETTLEMENT_INITIATED, SETTLEMENT_COMPLETED, CANCELLED]
           description: The new status of the shipment.
         milestoneData:
           type: object
@@ -2131,7 +2231,7 @@ components:
           type: string
         status:
           type: string
-          enum: [CREATED, IN_TRANSIT, DELIVERED, CANCELLED]
+          enum: [CREATED, PICKUP_CONFIRMED, IN_TRANSIT, CUSTOMS_CLEARED, OUT_FOR_DELIVERY, DELIVERED, SETTLEMENT_INITIATED, SETTLEMENT_COMPLETED, CANCELLED]
         milestones:
           type: array
           items:
@@ -2209,6 +2309,7 @@ components:
         - ERR_SHIPMENT_NOT_FOUND
         - ERR_PAYMENT_NOT_FOUND
         - ERR_DUPLICATE_KEY
+        - ERR_LEDGER_BLOCK_NOT_FOUND
       description: |
         Standard error codes returned by the API. See docs/ERROR_CODES.md for details.
         - ERR_AUTH_INVALID: Invalid or missing authentication token (401)
@@ -2220,6 +2321,47 @@ components:
         - ERR_SHIPMENT_NOT_FOUND: Specific shipment not found (404)
         - ERR_PAYMENT_NOT_FOUND: Specific payment not found (404)
         - ERR_DUPLICATE_KEY: Unique constraint violation (409)
+        - ERR_LEDGER_BLOCK_NOT_FOUND: Ledger block not found (404)
+    MilestoneEvent:
+      type: string
+      enum:
+        - CREATED
+        - PICKUP_CONFIRMED
+        - IN_TRANSIT
+        - CUSTOMS_CLEARED
+        - OUT_FOR_DELIVERY
+        - DELIVERED
+        - SETTLEMENT_INITIATED
+        - SETTLEMENT_COMPLETED
+        - PROOF_SUBMITTED
+        - CANCELLED
+      description: All lifecycle events that can appear on a shipment timeline.
+    LedgerBlock:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Ledger block ObjectId
+        shipmentId:
+          type: string
+          description: Associated shipment ObjectId
+        eventType:
+          $ref: '#/components/schemas/MilestoneEvent'
+        transactionHash:
+          type: string
+          description: Stellar transaction hash, if applicable
+        actor:
+          type: string
+          description: User ObjectId who triggered the event, if applicable
+        metadata:
+          type: object
+          description: Additional event-specific metadata
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
   securitySchemes:
     stellarSignature:
       type: apiKey

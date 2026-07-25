@@ -50,6 +50,10 @@ describe('shipment status cache invalidation', () => {
       auditLog: jest.fn(),
     }));
 
+    await jest.unstable_mockModule('../src/modules/ledger/ledger.service.js', () => ({
+      createLedgerBlockService: jest.fn(async () => ({ _id: 'lb-1' })),
+    }));
+
     const { updateShipmentStatusService } = await import('../src/modules/shipments/shipments.service.js');
 
     const result = await updateShipmentStatusService('shipment-1', 'DELIVERED' as any);

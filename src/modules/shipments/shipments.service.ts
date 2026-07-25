@@ -8,13 +8,14 @@ import { Anomaly } from '../anomaly/anomaly.model.js';
 import { Telemetry } from '../telemetry/telemetry.model.js';
 import { TelemetryAnchorStatus } from '../../shared/types/telemetry.js';
 import { AppError } from '../../shared/http/errors.js';
-import { IShipment, ShipmentStatus } from '../../shared/types/shipment.js';
+import { IShipment, ShipmentStatus, MilestoneEvent } from '../../shared/types/shipment.js';
 import { auditLog } from '../../shared/utils/auditLog.js';
 import { logger } from '../../shared/logger/logger.js';
 import { invalidateAnalyticsPerformanceCache } from '../analytics/analytics.cache.js';
 import * as paymentsRepo from '../payments/payments.repo.js';
 import { PaymentStatus } from '../payments/payments.model.js';
 import { validateStatusTransition } from '../../shared/constants/shipmentStateMachine.js';
+import { createLedgerBlockService } from '../ledger/ledger.service.js';
 
 import { offsetSkip } from '../../shared/utils/pagination.js';
 import {
@@ -525,6 +526,19 @@ export const updateShipmentStatusService = async (
   await invalidateAnalyticsPerformanceCache();
   await invalidateShipmentEtaCache(id);
 
+  // Write ledger block for every status change
+  try {
+    await createLedgerBlockService({
+      shipmentId: id,
+      eventType: status as MilestoneEvent,
+      transactionHash: shipment.stellarTxHash ?? undefined,
+      actor: actor?.userId,
+      metadata: { previousStatus },
+    });
+  } catch (ledgerErr) {
+    logger.warn({ err: ledgerErr, shipmentId: id, status }, 'Failed to create ledger block for status change');
+  }
+
   // Trigger escrow release on delivery
   if (status === ShipmentStatus.DELIVERED) {
     try {
@@ -541,10 +555,23 @@ export const updateShipmentStatusService = async (
             PaymentStatus.RELEASED,
             releaseResult.transactionHash
           );
-          console.log(
-            `[Shipment] Escrow released for shipment ${id}, ` +
-              `tx: ${releaseResult.transactionHash}`
-          );
+
+          // Write ledger block for settlement initiation
+          try {
+            await createLedgerBlockService({
+              shipmentId: id,
+              eventType: MilestoneEvent.SETTLEMENT_INITIATED,
+              transactionHash: releaseResult.transactionHash,
+              actor: actor?.userId,
+              metadata: { paymentId: payment._id.toString() },
+            });
+          } catch (settlementLedgerErr) {
+            logger.warn(
+              { err: settlementLedgerErr, shipmentId: id },
+              'Failed to create ledger block for settlement initiation'
+            );
+          }
+
           logger.info(
             { shipmentId: id, transactionHash: releaseResult.transactionHash },
             'Escrow released for shipment'
@@ -623,6 +650,22 @@ export const uploadShipmentProofService = async (
     },
     { new: true }
   );
+
+  // Write PROOF_SUBMITTED ledger block
+  try {
+    await createLedgerBlockService({
+      shipmentId: id,
+      eventType: MilestoneEvent.PROOF_SUBMITTED,
+      transactionHash: shipment?.stellarTxHash ?? undefined,
+      metadata: {
+        proofUrl,
+        recipientSignatureName: proof.recipientSignatureName,
+      },
+    });
+  } catch (ledgerErr) {
+    logger.warn({ err: ledgerErr, shipmentId: id }, 'Failed to create ledger block for proof upload');
+  }
+
   return shipment;
 };
 

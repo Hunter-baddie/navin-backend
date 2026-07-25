@@ -1,6 +1,6 @@
-import { ShipmentStatus } from '../constants/index.js';
+import { ShipmentStatus, MilestoneEvent } from '../constants/index.js';
 
-export { ShipmentStatus };
+export { ShipmentStatus, MilestoneEvent };
 
 export interface IMilestone {
   name: string;

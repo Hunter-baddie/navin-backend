@@ -19,8 +19,10 @@ describe('#286 - Shipment State Machine', () => {
       );
     });
 
-    it('DELIVERED has no allowed transitions (terminal)', () => {
-      expect(ALLOWED_TRANSITIONS[ShipmentStatus.DELIVERED]).toEqual([]);
+    it('DELIVERED can only go to SETTLEMENT_INITIATED', () => {
+      expect(ALLOWED_TRANSITIONS[ShipmentStatus.DELIVERED]).toEqual([
+        ShipmentStatus.SETTLEMENT_INITIATED,
+      ]);
     });
 
     it('CANCELLED has no allowed transitions (terminal)', () => {
@@ -74,7 +76,7 @@ describe('#286 - Shipment State Machine', () => {
       );
     });
 
-    it('DELIVERED → any status throws 400 (terminal state)', () => {
+    it('DELIVERED → invalid status throws 400 (only SETTLEMENT_INITIATED allowed)', () => {
       for (const next of [
         ShipmentStatus.CREATED,
         ShipmentStatus.IN_TRANSIT,
@@ -84,6 +86,10 @@ describe('#286 - Shipment State Machine', () => {
           expect.objectContaining({ statusCode: 400, code: 'ERR_SHIPMENT_INVALID_TRANSITION' })
         );
       }
+    });
+
+    it('SETTLEMENT_COMPLETED has no allowed transitions (terminal)', () => {
+      expect(ALLOWED_TRANSITIONS[ShipmentStatus.SETTLEMENT_COMPLETED]).toEqual([]);
     });
 
     it('CANCELLED → any status throws 400 (terminal state)', () => {
@@ -106,7 +112,7 @@ describe('#286 - Shipment State Machine', () => {
         caughtError = e;
       }
       expect(caughtError).toMatchObject({
-        details: { allowedTransitions: [] },
+        details: { allowedTransitions: [ShipmentStatus.SETTLEMENT_INITIATED] },
       });
     });
 
