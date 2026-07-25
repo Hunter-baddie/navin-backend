@@ -41,7 +41,8 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import type { Application } from 'express';
 
-const socketIoPath = new URL('../src/infra/socket/io.js', import.meta.url).href;
+// Relative specifier (not file://) so jest.unstable_mockModule resolves like production imports
+const socketIoPath = '../src/infra/socket/io.js';
 
 /**
  * Regression tests for controller bug fixes in getTelemetry.
@@ -146,24 +147,40 @@ describe('getTelemetry controller bug fixes', () => {
 
   describe('from/to forwarding to service (Requirement 3.2)', () => {
     let app: Application;
+    let capturedFindQuery: Record<string, unknown> | undefined;
 
-    const mockGetTelemetryService = jest.fn<(params: Record<string, unknown>) => Promise<{ data: []; nextCursor: null; hasMore: false }>>();
+    // Do NOT mock telemetry.service — a sticky unstable_mockModule stub for
+    // bulkIngestTelemetry would prevent later suites from exercising the real
+    // emitTelemetryUpdate path (Issue #255).
+    const mockTelemetryFind = jest.fn((query: Record<string, unknown>) => {
+      capturedFindQuery = query;
+      // Mongoose Query is mutable/chainable: limit() then lean() on the same object
+      const chain: {
+        select: () => typeof chain;
+        sort: () => typeof chain;
+        skip: () => typeof chain;
+        limit: () => typeof chain;
+        lean: () => Promise<unknown[]>;
+      } = {
+        select: () => chain,
+        sort: () => chain,
+        skip: () => chain,
+        limit: () => chain,
+        lean: async () => [],
+      };
+      return chain;
+    });
+
+    const mockShipmentFind = jest.fn(() => ({
+      select: () => ({
+        lean: async () => [{ _id: 'aabbccddeeff001122334455' }],
+      }),
+    }));
 
     beforeEach(async () => {
       jest.clearAllMocks();
       jest.resetModules();
-
-      mockGetTelemetryService.mockResolvedValue({ data: [], nextCursor: null, hasMore: false });
-
-      await jest.unstable_mockModule('../src/modules/telemetry/telemetry.service.js', () => ({
-        getTelemetryService: mockGetTelemetryService,
-        bulkIngestTelemetry: jest.fn(),
-        getTelemetryThresholds: jest.fn(() => ({ maxTemp: 85, maxHumidity: 90, minBatteryLevel: 20 })),
-        findActiveShipmentBySensorId: jest.fn(),
-        createTelemetryRecord: jest.fn(),
-        updateTelemetryAnchor: jest.fn(),
-        markTelemetryAnchorFailed: jest.fn(),
-      }));
+      capturedFindQuery = undefined;
 
       await jest.unstable_mockModule(socketIoPath, () => ({
         initSocketIO: jest.fn(),
@@ -181,7 +198,7 @@ describe('getTelemetry controller bug fixes', () => {
       }));
 
       await jest.unstable_mockModule('../src/modules/telemetry/telemetry.model.js', () => ({
-        Telemetry: { find: jest.fn() },
+        Telemetry: { find: mockTelemetryFind },
         TelemetryAnchorStatus: {
           PENDING_ANCHOR: 'PENDING_ANCHOR',
           ANCHORED: 'ANCHORED',
@@ -190,7 +207,11 @@ describe('getTelemetry controller bug fixes', () => {
       }));
 
       await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', () => ({
-        Shipment: { find: jest.fn(), findById: jest.fn(), findByIdAndUpdate: jest.fn() },
+        Shipment: {
+          find: mockShipmentFind,
+          findById: jest.fn(),
+          findByIdAndUpdate: jest.fn(),
+        },
         ShipmentStatus: {
           CREATED: 'CREATED',
           IN_TRANSIT: 'IN_TRANSIT',
@@ -207,7 +228,7 @@ describe('getTelemetry controller bug fixes', () => {
       app = appModule.buildApp();
     });
 
-    it('GET /api/telemetry?from=...&to=... calls getTelemetryService with Date objects', async () => {
+    it('GET /api/telemetry?from=...&to=... forwards Date objects into the telemetry query', async () => {
       const fromStr = '2026-01-01T00:00:00.000Z';
       const toStr = '2026-12-31T23:59:59.000Z';
 
@@ -216,18 +237,15 @@ describe('getTelemetry controller bug fixes', () => {
         .set('Authorization', `Bearer ${validToken}`);
 
       expect(res.status).toBe(200);
-      expect(mockGetTelemetryService).toHaveBeenCalledTimes(1);
+      expect(mockTelemetryFind).toHaveBeenCalledTimes(1);
+      expect(capturedFindQuery).toBeDefined();
 
-      const callArgs = mockGetTelemetryService.mock.calls[0][0] as unknown as {
-        from?: Date;
-        to?: Date;
-      };
-
-      // Zod coerces the string to a Date before the controller runs
-      expect(callArgs.from).toBeInstanceOf(Date);
-      expect(callArgs.to).toBeInstanceOf(Date);
-      expect((callArgs.from as Date).toISOString()).toBe(fromStr);
-      expect((callArgs.to as Date).toISOString()).toBe(toStr);
+      const timestamp = capturedFindQuery?.['timestamp'] as { $gte?: Date; $lte?: Date };
+      // Zod coerces the string to a Date before the controller/service runs
+      expect(timestamp.$gte).toBeInstanceOf(Date);
+      expect(timestamp.$lte).toBeInstanceOf(Date);
+      expect(timestamp.$gte!.toISOString()).toBe(fromStr);
+      expect(timestamp.$lte!.toISOString()).toBe(toStr);
     });
   });
 });
@@ -594,7 +612,9 @@ describe('bulkIngestTelemetry — Property 1: emit count equals item count', () 
         latitude: fc.float({ min: -90, max: 90, noNaN: true }),
         longitude: fc.float({ min: -180, max: 180, noNaN: true }),
         batteryLevel: fc.float({ min: 0, max: 100, noNaN: true }),
-        timestamp: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-01-01') }),
+        timestamp: fc
+          .date({ min: new Date('2020-01-01'), max: new Date('2030-01-01') })
+          .filter(d => !Number.isNaN(d.getTime())),
       });
 
       await fc.assert(
@@ -701,7 +721,9 @@ describe('bulkIngestTelemetry — Property 2: emit payload contains all required
         latitude: fc.float({ min: -90, max: 90, noNaN: true }),
         longitude: fc.float({ min: -180, max: 180, noNaN: true }),
         batteryLevel: fc.float({ min: 0, max: 100, noNaN: true }),
-        timestamp: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-01-01') }),
+        timestamp: fc
+          .date({ min: new Date('2020-01-01'), max: new Date('2030-01-01') })
+          .filter(d => !Number.isNaN(d.getTime())),
       });
 
       await fc.assert(
