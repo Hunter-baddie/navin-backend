@@ -401,7 +401,7 @@ describe('POST /api/telemetry/bulk — Socket.io broadcast (example-based)', () 
 
   // Stable mock references — factory closures always capture the same objects
   const mockEmitTelemetryUpdate = jest.fn();
-  const mockTelemetryCreate = jest.fn<() => Promise<ReturnType<typeof makeSyntheticTelemetryDoc>>>();
+  const mockTelemetryCreate = jest.fn<(...args: any[]) => Promise<ReturnType<typeof makeSyntheticTelemetryDoc>>>();
 
   let app: Application;
 
@@ -436,7 +436,7 @@ describe('POST /api/telemetry/bulk — Socket.io broadcast (example-based)', () 
 
     await jest.unstable_mockModule('../src/infra/redis/queue.js', () => ({
       pushAlertJob: jest.fn(),
-      pushStellarAnchorJob: jest.fn().mockResolvedValue(undefined),
+      pushStellarAnchorJob: jest.fn<any>().mockResolvedValue(undefined),
       getTransactionQueue: jest.fn(),
       getRedisClient: jest.fn(),
     }));
@@ -466,7 +466,7 @@ describe('POST /api/telemetry/bulk — Socket.io broadcast (example-based)', () 
     }));
 
     await jest.unstable_mockModule('../src/modules/anomaly/anomaly.service.js', () => ({
-      detectAnomaly: jest.fn().mockResolvedValue({ detected: false, anomalies: [] }),
+      detectAnomaly: jest.fn<any>().mockResolvedValue({ detected: false, anomalies: [] }),
     }));
 
     const appModule = await import('../src/app.js');
@@ -552,13 +552,13 @@ describe('bulkIngestTelemetry — Property 1: emit count equals item count', () 
 
       await jest.unstable_mockModule('../src/infra/redis/queue.js', () => ({
         pushAlertJob: jest.fn(),
-        pushStellarAnchorJob: jest.fn().mockResolvedValue(undefined),
+        pushStellarAnchorJob: jest.fn<any>().mockResolvedValue(undefined),
         getTransactionQueue: jest.fn(),
         getRedisClient: jest.fn(),
       }));
 
       await jest.unstable_mockModule('../src/modules/anomaly/anomaly.service.js', () => ({
-        detectAnomaly: jest.fn().mockResolvedValue({ detected: false, anomalies: [] }),
+        detectAnomaly: jest.fn<any>().mockResolvedValue({ detected: false, anomalies: [] }),
       }));
 
       await jest.unstable_mockModule('../src/modules/telemetry/telemetry.model.js', () => ({
@@ -661,13 +661,13 @@ describe('bulkIngestTelemetry — Property 2: emit payload contains all required
 
       await jest.unstable_mockModule('../src/infra/redis/queue.js', () => ({
         pushAlertJob: jest.fn(),
-        pushStellarAnchorJob: jest.fn().mockResolvedValue(undefined),
+        pushStellarAnchorJob: jest.fn<any>().mockResolvedValue(undefined),
         getTransactionQueue: jest.fn(),
         getRedisClient: jest.fn(),
       }));
 
       await jest.unstable_mockModule('../src/modules/anomaly/anomaly.service.js', () => ({
-        detectAnomaly: jest.fn().mockResolvedValue({ detected: false, anomalies: [] }),
+        detectAnomaly: jest.fn<any>().mockResolvedValue({ detected: false, anomalies: [] }),
       }));
 
       await jest.unstable_mockModule('../src/modules/telemetry/telemetry.model.js', () => ({

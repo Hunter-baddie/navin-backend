@@ -15,10 +15,10 @@ function makeToken(role: string) {
 }
 
 await jest.unstable_mockModule('../src/modules/auth/apiKey.service.js', () => ({
-  generateApiKey: jest.fn().mockResolvedValue({ _id: 'key-1', apiKey: 'nvk_test123' }),
-  listApiKeys: jest.fn().mockResolvedValue([]),
-  revokeApiKey: jest.fn().mockResolvedValue(undefined),
-  validateApiKey: jest.fn().mockResolvedValue({ isValid: false }),
+  generateApiKey: jest.fn<any>().mockResolvedValue({ _id: 'key-1', apiKey: 'nvk_test123' }),
+  listApiKeys: jest.fn<any>().mockResolvedValue([]),
+  revokeApiKey: jest.fn<any>().mockResolvedValue(undefined),
+  validateApiKey: jest.fn<any>().mockResolvedValue({ isValid: false }),
 }));
 
 await jest.unstable_mockModule('../src/modules/auth/auth.service.js', () => ({

@@ -1,7 +1,8 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { createStellarServiceMock } from './helpers/mocks.js';
+import type { IPayment, PaymentStatus } from '../src/modules/payments/payments.model.js';
 
-const mockCreatePayment = jest.fn();
+const mockCreatePayment = jest.fn<(...args: any[]) => Promise<IPayment>>();
 
 await jest.unstable_mockModule('../src/modules/payments/payments.repo.js', () => ({
   createPayment: mockCreatePayment,
@@ -29,17 +30,18 @@ describe('Issue #265: createPaymentService error handling', () => {
       organizationId: 'org-1',
       amount: 100,
       tokenType: 'USDC',
-      status: 'Pending',
+      status: 'Pending' as PaymentStatus,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    mockCreatePayment.mockResolvedValue(paymentData);
+    mockCreatePayment.mockResolvedValue(paymentData as unknown as IPayment);
 
     const result = await createPaymentService({
       shipmentId: 'ship-1',
       organizationId: 'org-1',
       amount: 100,
       tokenType: 'USDC',
+      status: 'Pending' as PaymentStatus,
     });
 
     expect(mockCreatePayment).toHaveBeenCalledWith({
@@ -63,6 +65,7 @@ describe('Issue #265: createPaymentService error handling', () => {
         organizationId: 'org-1',
         amount: -1,
         tokenType: 'USDC',
+        status: 'Pending' as PaymentStatus,
       })
     ).rejects.toThrow('Shipment validation failed');
   });
@@ -79,6 +82,7 @@ describe('Issue #265: createPaymentService error handling', () => {
         organizationId: 'org-1',
         amount: 100,
         tokenType: 'USDC',
+        status: 'Pending' as PaymentStatus,
       })
     ).rejects.toThrow('duplicate key error');
   });
@@ -93,6 +97,7 @@ describe('Issue #265: createPaymentService error handling', () => {
         organizationId: 'org-1',
         amount: 100,
         tokenType: 'USDC',
+        status: 'Pending' as PaymentStatus,
       })
     ).rejects.toThrow('Database connection lost');
   });
@@ -107,6 +112,7 @@ describe('Issue #265: createPaymentService error handling', () => {
         organizationId: 'org-1',
         amount: 100,
         tokenType: 'USDC',
+        status: 'Pending' as PaymentStatus,
       });
       fail('Expected error to be thrown');
     } catch (error) {
