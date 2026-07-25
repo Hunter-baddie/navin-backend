@@ -49,3 +49,18 @@ export const TelemetryThresholdsSchema = z.object({
 });
 
 export type TelemetryThresholds = z.infer<typeof TelemetryThresholdsSchema>;
+
+export const TelemetryThresholdsQuerySchema = z.object({
+  shipmentType: z.string().trim().min(1).optional(),
+});
+
+export const UpdateTelemetryThresholdsBodySchema = z.object({
+  shipmentType: z.string().trim().min(1).optional(),
+  maxTemp: z.number().nullable().optional(),
+  minTemp: z.number().nullable().optional(),
+  maxHumidity: z.number().nullable().optional(),
+  minHumidity: z.number().nullable().optional(),
+  minBatteryLevel: z.number().nullable().optional(),
+});
+
+export type UpdateTelemetryThresholdsInput = z.infer<typeof UpdateTelemetryThresholdsBodySchema>;

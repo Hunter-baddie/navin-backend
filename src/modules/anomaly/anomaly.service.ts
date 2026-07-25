@@ -4,6 +4,7 @@ import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import { evaluateTelemetry } from '../../services/anomaly.service.js';
 import { getRedisClient } from '../../infra/redis/connection.js';
 import { paginateCursor } from '../../shared/utils/pagination.js';
+import { resolveTelemetryThresholdsForShipment } from '../telemetry/telemetryThreshold.service.js';
 
 interface TelemetryData {
   _id: string;
@@ -34,11 +35,7 @@ interface AnomalyResult {
  */
 export async function detectAnomaly(data: TelemetryData): Promise<AnomalyResult> {
   const timestamp = data.timestamp ?? new Date();
-  const thresholds = {
-    maxTemp: 25,
-    maxHumidity: 80,
-    minBatteryLevel: 20,
-  };
+  const thresholds = await resolveTelemetryThresholdsForShipment(data.shipmentId);
 
   const evaluated = evaluateTelemetry(
     {
