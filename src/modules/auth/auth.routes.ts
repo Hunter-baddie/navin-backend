@@ -9,9 +9,8 @@ import {
   LoginBodySchema,
   ForgotPasswordBodySchema,
   ResetPasswordBodySchema,
+  RefreshBodySchema,
 } from './auth.validation.js';
-import { SignupBodySchema, LoginBodySchema, RefreshBodySchema } from './auth.validation.js';
-import { signupController, loginController, logoutController, refreshController } from './auth.controller.js';
 import {
   signupController,
   loginController,

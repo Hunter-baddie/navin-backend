@@ -15,7 +15,7 @@ import { invalidateAnalyticsPerformanceCache } from '../analytics/analytics.cach
 import * as paymentsRepo from '../payments/payments.repo.js';
 import { PaymentStatus } from '../payments/payments.model.js';
 import { validateStatusTransition } from '../../shared/constants/shipmentStateMachine.js';
-import type { BulkStatusUpdateInput } from './shipments.validation.js';
+
 import { offsetSkip } from '../../shared/utils/pagination.js';
 import {
   readShipmentEtaCache,

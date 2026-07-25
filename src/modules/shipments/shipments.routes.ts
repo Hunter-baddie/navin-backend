@@ -15,16 +15,15 @@ import {
 } from './shipments.controller.js';
 import { requireRole } from '../../shared/middleware/requireRole.js';
 import { requireAuth } from '../../shared/middleware/requireAuth.js';
-import { validate } from '../../shared/validation/validate.js';
-import { getShipmentsQuerySchema, ExportShipmentsQuerySchema } from './shipments.validation.js';
 import multer from 'multer';
 import {
+  getShipmentsQuerySchema,
+  ExportShipmentsQuerySchema,
   CreateShipmentBodySchema,
   ShipmentIdParamSchema,
   ShipmentPatchBodySchema,
   ShipmentProofBodySchema,
   ShipmentStatusBodySchema,
-  BulkStatusUpdateBodySchema,
   ShipmentTimelineQuerySchema,
 } from './shipments.validation.js';
 
@@ -37,7 +36,7 @@ shipmentsRouter.get(
   '/export',
   requireAuth,
   requireRole(UserRole.ADMIN, UserRole.MANAGER),
-  validate({ query: ExportShipmentsQuerySchema }),
+  validateRequest({ query: ExportShipmentsQuerySchema }),
   asyncHandler(exportShipments)
 );
 
@@ -45,7 +44,7 @@ shipmentsRouter.get(
   '/',
   requireAuth,
   requireRole(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER),
-  validate({ query: getShipmentsQuerySchema }),
+  validateRequest({ query: getShipmentsQuerySchema }),
   asyncHandler(getShipments)
 );
 
@@ -97,6 +96,14 @@ shipmentsRouter.get(
   requireAuth,
   validateRequest({ params: ShipmentIdParamSchema }),
   asyncHandler(getShipmentEta)
+);
+
+shipmentsRouter.get(
+  '/:id/timeline',
+  requireAuth,
+  requireRole(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER),
+  validateRequest({ params: ShipmentIdParamSchema, query: ShipmentTimelineQuerySchema }),
+  asyncHandler(getShipmentTimeline)
 );
 
 export default shipmentsRouter;
