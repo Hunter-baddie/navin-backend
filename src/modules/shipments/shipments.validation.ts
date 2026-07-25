@@ -13,6 +13,18 @@ const statusFilterSchema = z
   })
   .pipe(z.array(z.nativeEnum(ShipmentStatus)).min(1).optional());
 
+const priorityFilterSchema = z
+  .string()
+  .optional()
+  .transform(value => {
+    if (!value || value.trim() === '') return undefined;
+    return value
+      .split(',')
+      .map(s => s.trim().toUpperCase())
+      .filter(Boolean);
+  })
+  .pipe(z.array(z.enum(['URGENT', 'STANDARD', 'ECONOMY'])).min(1).optional());
+
 const optionalNonEmptyString = z
   .string()
   .optional()
@@ -24,6 +36,7 @@ const optionalNonEmptyString = z
 export const getShipmentsQuerySchema = z
   .object({
     status: statusFilterSchema,
+    priority: priorityFilterSchema,
     page: z.coerce.number().min(1).default(1),
     limit: z.coerce.number().min(1).max(100).default(20),
     origin: optionalNonEmptyString,
@@ -32,6 +45,8 @@ export const getShipmentsQuerySchema = z
     q: optionalNonEmptyString,
     from: z.coerce.date().optional(),
     to: z.coerce.date().optional(),
+    sortBy: z.enum(['createdAt', 'priority', 'expectedDelivery']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).default('desc'),
   })
   .strict()
   .refine(data => !(data.from && data.to && data.from > data.to), {
@@ -77,6 +92,11 @@ export type ShipmentStatusInput = z.infer<typeof ShipmentStatusBodySchema>;
 export const ShipmentProofBodySchema = z.object({
   recipientSignatureName: z.string().optional(),
   notes: z.string().optional(),
+});
+
+export const CreateDisputeBodySchema = z.object({
+  type: z.enum(['WRONG_GOODS', 'DAMAGED', 'NOT_DELIVERED', 'PAYMENT_DISAGREEMENT', 'OTHER']),
+  description: z.string().min(1),
 });
 
 export const ShipmentTimelineQuerySchema = z.object({

@@ -16,6 +16,19 @@ export interface IDeliveryProof {
   uploadedAt: Date;
 }
 
+export type DisputeType = "WRONG_GOODS" | "DAMAGED" | "NOT_DELIVERED" | "PAYMENT_DISAGREEMENT" | "OTHER";
+export type DisputeStatus = "PENDING" | "ESCROWED" | "RELEASED" | "DISPUTED" | "FAILED";
+
+export interface IDispute {
+  referenceNumber: string;
+  status: DisputeStatus;
+  type: DisputeType;
+  description: string;
+  evidenceUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface IShipment {
   _id: string;
   trackingNumber: string;
@@ -29,6 +42,9 @@ export interface IShipment {
   stellarTokenId?: string;
   stellarTxHash?: string;
   deliveryProof?: IDeliveryProof;
+  priority?: "URGENT" | "STANDARD" | "ECONOMY";
+  expectedDelivery?: Date;
+  disputes: IDispute[];
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;

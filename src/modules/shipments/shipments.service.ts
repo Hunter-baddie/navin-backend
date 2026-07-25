@@ -179,9 +179,10 @@ function inferEtaConfidence(pointsCount: number, averageSpeed: number): 'LOW' | 
 export const findShipments = async (
   query: FilterQuery<unknown>,
   skip: number,
-  limit: number
+  limit: number,
+  sort: Record<string, 1 | -1> = { createdAt: -1, _id: -1 }
 ): Promise<IShipment[]> => {
-  return Shipment.find(query).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean();
+  return Shipment.find(query).sort(sort as any).skip(skip).limit(limit).lean();
 };
 
 /**
@@ -191,6 +192,7 @@ export const findShipments = async (
  */
 export const getShipmentsService = async (params: {
   status?: string | string[];
+  priority?: string | string[];
   page: number;
   limit: number;
   origin?: string;
@@ -199,9 +201,11 @@ export const getShipmentsService = async (params: {
   q?: string;
   from?: Date;
   to?: Date;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   filters: Record<string, unknown>;
 }): Promise<ShipmentListResult> => {
-  const { status, page, limit, origin, destination, trackingNumber, q, from, to, filters } = params;
+  const { status, priority, page, limit, origin, destination, trackingNumber, q, from, to, sortBy, sortOrder, filters } = params;
   const query: FilterQuery<unknown> = {};
 
   if (filters.organizationId) {
@@ -239,9 +243,22 @@ export const getShipmentsService = async (params: {
     query.createdAt = createdAt;
   }
 
+  if (priority) {
+    const priorities = Array.isArray(priority) ? priority : [priority];
+    query.priority = priorities.length === 1 ? priorities[0] : { $in: priorities };
+  }
+
+  const sort: Record<string, 1 | -1> = {};
+  if (sortBy) {
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+  } else {
+    sort['createdAt'] = -1;
+  }
+  sort['_id'] = sortOrder === 'asc' ? 1 : -1; // deterministic tie-breaker
+
   const skip = offsetSkip(page, limit);
   const [data, total] = await Promise.all([
-    findShipments(query, skip, limit),
+    findShipments(query, skip, limit, sort),
     Shipment.countDocuments(query),
   ]);
 
@@ -624,6 +641,57 @@ export const uploadShipmentProofService = async (
     { new: true }
   );
   return shipment;
+};
+
+/**
+ * Creates a dispute and attaches it to a shipment.
+ * @param {string} id - Shipment ObjectId.
+ * @param {Express.Multer.File | undefined} file - Optional evidence file upload.
+ * @param {{type: string; description: string}} data - Dispute data.
+ * @returns {Promise<unknown>} The created dispute object.
+ * @throws {AppError} When storage upload fails or shipment not found.
+ */
+export const createDisputeService = async (
+  id: string,
+  file: Express.Multer.File | undefined,
+  data: { type: string; description: string }
+) => {
+  let evidenceUrl: string | undefined;
+
+  if (file) {
+    try {
+      evidenceUrl = await mockUploadToStorage(file);
+    } catch {
+      throw new AppError(
+        503,
+        'Storage bucket unavailable, please try again later.',
+        'SERVICE_UNAVAILABLE'
+      );
+    }
+  }
+
+  const shipment = await Shipment.findById(id);
+  if (!shipment) {
+    throw new AppError(404, 'Shipment not found', ErrorCodes.SHIPMENT_NOT_FOUND);
+  }
+
+  const referenceNumber = `DSP-${Math.floor(100000 + Math.random() * 900000)}`;
+  
+  const dispute = {
+    referenceNumber,
+    status: 'PENDING',
+    type: data.type,
+    description: data.description,
+    evidenceUrl,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  shipment.disputes.push(dispute as any);
+  await shipment.save();
+
+  // Return the newly created dispute (the last one in the array)
+  return shipment.disputes[shipment.disputes.length - 1];
 };
 
 const EXPORT_MAX_RECORDS = 10_000;
