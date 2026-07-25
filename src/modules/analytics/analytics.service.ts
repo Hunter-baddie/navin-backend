@@ -5,6 +5,7 @@ import {
   readAnalyticsPerformanceCache,
   writeAnalyticsPerformanceCache,
 } from './analytics.cache.js';
+import type { PipelineStage } from 'mongoose';
 
 import type { PerformanceQuery } from './analytics.validation.js';
 
@@ -84,7 +85,7 @@ export async function getAnalyticsPerformance(
   const dateTruncUnit = granularity === 'daily' ? 'day' : granularity === 'weekly' ? 'week' : 'month';
 
   // Performance window is based on shipment `createdAt` (the document timestamp).
-  const shipmentPipeline = [
+  const shipmentPipeline: PipelineStage[] = [
     {
       $match: {
         createdAt: { $gte: startDate, $lte: endDate },
