@@ -23,7 +23,12 @@ const priorityFilterSchema = z
       .map(s => s.trim().toUpperCase())
       .filter(Boolean);
   })
-  .pipe(z.array(z.enum(['URGENT', 'STANDARD', 'ECONOMY'])).min(1).optional());
+  .pipe(
+    z
+      .array(z.enum(['URGENT', 'STANDARD', 'ECONOMY']))
+      .min(1)
+      .optional()
+  );
 
 const optionalNonEmptyString = z
   .string()
@@ -107,6 +112,21 @@ export const ShipmentTimelineQuerySchema = z.object({
 export type ShipmentTimelineQuery = z.infer<typeof ShipmentTimelineQuerySchema>;
 
 export const ShipmentsQuerySchema = getShipmentsQuerySchema;
+
+export const UploadDocumentBodySchema = z.object({
+  type: z.enum([
+    'BILL_OF_LADING',
+    'CUSTOMS_DECLARATION',
+    'INSURANCE_CERTIFICATE',
+    'PACKING_LIST',
+    'INVOICE',
+    'OTHER',
+  ]),
+});
+
+export const UploadPhotoBodySchema = z.object({
+  caption: z.string().max(500).optional(),
+});
 
 export const ExportShipmentsQuerySchema = z.object({
   format: z.enum(['csv', 'json']).default('json'),

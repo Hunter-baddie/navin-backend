@@ -53,6 +53,51 @@ const ShipmentSchema = new Schema(
       notes: { type: String },
       uploadedAt: { type: Date },
     },
+    documents: {
+      type: [
+        new Schema(
+          {
+            url: { type: String, required: true },
+            fileName: { type: String, required: true },
+            mimeType: { type: String, required: true },
+            type: {
+              type: String,
+              enum: [
+                'BILL_OF_LADING',
+                'CUSTOMS_DECLARATION',
+                'INSURANCE_CERTIFICATE',
+                'PACKING_LIST',
+                'INVOICE',
+                'OTHER',
+              ],
+              required: true,
+            },
+            size: { type: Number, required: true },
+            uploadedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+            uploadedAt: { type: Date, required: true },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
+    photos: {
+      type: [
+        new Schema(
+          {
+            url: { type: String, required: true },
+            fileName: { type: String, required: true },
+            mimeType: { type: String, required: true },
+            caption: { type: String },
+            size: { type: Number, required: true },
+            uploadedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+            uploadedAt: { type: Date, required: true },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
     disputes: { type: [DisputeSchema], default: [] },
     deletedAt: { type: Date, default: null },
   },

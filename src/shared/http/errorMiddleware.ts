@@ -1,6 +1,7 @@
 // src/shared/http/errorMiddleware.ts
 import type { ErrorRequestHandler } from 'express';
 import mongoose from 'mongoose';
+import multer from 'multer';
 import { AppError, ErrorCodes } from './errors.js';
 
 export function errorMiddleware(): ErrorRequestHandler {
@@ -31,6 +32,16 @@ export function errorMiddleware(): ErrorRequestHandler {
       (err as { status?: number }).status === 400
     ) {
       return respond(400, 'Invalid JSON payload', ErrorCodes.BAD_REQUEST);
+    }
+
+    // Multer file size limit exceeded
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return respond(413, 'File too large', ErrorCodes.FILE_TOO_LARGE);
+    }
+
+    // Multer MIME type rejection from fileFilter
+    if (err instanceof Error && err.message === 'Invalid MIME type') {
+      return respond(415, 'Unsupported file type', ErrorCodes.INVALID_MIME_TYPE);
     }
 
     if (
