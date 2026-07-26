@@ -220,6 +220,53 @@ paths:
                         type: string
                         format: date-time
                         description: Current UTC timestamp
+  /api/events:
+    get:
+      summary: Real-time event stream (SSE)
+      description: |
+        Opens a Server-Sent Events stream for the authenticated user. Events are scoped
+        per user via Redis pub/sub channels and include shipment, settlement, anomaly,
+        and location updates. A heartbeat comment is sent every 30 seconds.
+
+        Authentication accepts either `Authorization: Bearer <token>` or `?token=<jwt>`
+        for EventSource clients that cannot set custom headers.
+      tags:
+        - Events
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: token
+          required: false
+          schema:
+            type: string
+          description: JWT for EventSource clients that cannot send Authorization headers
+      responses:
+        '200':
+          description: SSE stream opened
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  Stream of SSE messages. Event types: shipment:status, shipment:milestone,
+                  settlement:status, notification:new, anomaly:detected, location:update.
+              examples:
+                shipmentStatus:
+                  summary: Shipment status change
+                  value: |
+                    event: shipment:status
+                    data: {"type":"shipment:status","shipmentId":"671000000000000000000001","newStatus":"IN_TRANSIT","timestamp":"2026-01-15T12:00:00.000Z"}
+                heartbeat:
+                  summary: Keep-alive heartbeat (every 30s)
+                  value: |
+                    : heartbeat
+        '401':
+          description: Missing, invalid, or revoked JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/auth/api-keys:
     post:
       summary: Create a new API key
