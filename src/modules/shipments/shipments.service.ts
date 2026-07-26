@@ -33,11 +33,6 @@ import { isAuthorizedForShipment } from '../../infra/socket/shipmentRooms.js';
 import { ErrorCodes } from '../../shared/http/errors.js';
 import { UserRole } from '../../shared/constants/index.js';
 
-type BulkUpdateResult = {
-  updated: number;
-  failed: Array<{ id: string; reason: string }>;
-};
-
 type ShipmentListResult = {
   data: IShipment[];
   page: number;

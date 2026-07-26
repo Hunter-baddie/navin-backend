@@ -1,7 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import type { Request, Response } from 'express';
 import { sendResponse } from '../http/sendResponse.js';
-import { ErrorCodes } from '../http/errors.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -13,15 +12,7 @@ const createRateLimitHandler = (message: string) => (req: Request, res: Response
 
   res.setHeader('Retry-After', String(retryAfter));
 
-  sendResponse(
-    res,
-    429,
-    false,
-    message,
-    null,
-    undefined,
-    { retryAfter }
-  );
+  sendResponse(res, 429, false, message, null, undefined, { retryAfter });
 };
 
 export const standardLimiter = rateLimit({
