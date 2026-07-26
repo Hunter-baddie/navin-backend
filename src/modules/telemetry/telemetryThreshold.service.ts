@@ -56,9 +56,15 @@ export async function updateOrgTelemetryThresholdsService(
   };
 }
 
+import mongoose from 'mongoose';
+
 export async function resolveTelemetryThresholdsForShipment(
   shipmentId: string
 ): Promise<TelemetryThresholds> {
+  if (!shipmentId || !mongoose.Types.ObjectId.isValid(shipmentId)) {
+    return mergeWithDefaults(undefined);
+  }
+
   const shipment = await Shipment.findById(shipmentId)
     .select({ enterpriseId: 1, offChainMetadata: 1 })
     .lean<{
@@ -73,7 +79,9 @@ export async function resolveTelemetryThresholdsForShipment(
   const organizationId = shipment.enterpriseId?.toString();
   const rawType = shipment.offChainMetadata?.shipmentType;
   const shipmentType =
-    typeof rawType === 'string' && rawType.trim().length > 0 ? rawType.trim() : DEFAULT_SHIPMENT_TYPE;
+    typeof rawType === 'string' && rawType.trim().length > 0
+      ? rawType.trim()
+      : DEFAULT_SHIPMENT_TYPE;
 
   if (!organizationId) {
     return mergeWithDefaults(undefined);
