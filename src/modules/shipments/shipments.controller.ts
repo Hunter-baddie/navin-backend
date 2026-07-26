@@ -8,6 +8,7 @@ import {
   patchShipmentService,
   updateShipmentStatusService,
   uploadShipmentProofService,
+  createDisputeService,
   deleteShipmentService,
   getShipmentEtaService,
   exportShipmentsService,
@@ -19,7 +20,7 @@ import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
 export const getShipments = async (req: Request, res: Response) => {
   const query = req.query as unknown as GetShipmentsQuery;
-  const { status, page = 1, limit = 20, origin, destination, trackingNumber, q, from, to } = query;
+  const { status, priority, page = 1, limit = 20, origin, destination, trackingNumber, q, from, to, sortBy, sortOrder } = query;
   // Build explicit filters object to avoid unvalidated query parameters
   const filters: Record<string, unknown> = {};
   if (req.user?.organizationId) {
@@ -40,6 +41,9 @@ export const getShipments = async (req: Request, res: Response) => {
     q,
     from,
     to,
+    priority,
+    sortBy,
+    sortOrder,
     filters,
   });
 
@@ -132,6 +136,15 @@ export const uploadShipmentProof = async (req: Request, res: Response) => {
   });
 
   sendResponse(res, 200, true, 'Proof uploaded', shipment);
+};
+
+export const createDispute = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { type, description } = req.body as { type: string; description: string };
+  const file = req.file;
+
+  const dispute = await createDisputeService(id, file, { type, description });
+  sendResponse(res, 201, true, 'Dispute created', dispute);
 };
 
 export const exportShipments = async (req: Request, res: Response) => {

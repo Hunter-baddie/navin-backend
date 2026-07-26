@@ -9,6 +9,7 @@ import {
   patchShipment,
   patchShipmentStatus,
   uploadShipmentProof,
+  createDispute,
   deleteShipment,
   getShipmentEta,
   exportShipments,
@@ -25,6 +26,7 @@ import {
   ShipmentProofBodySchema,
   ShipmentStatusBodySchema,
   ShipmentTimelineQuerySchema,
+  CreateDisputeBodySchema,
 } from './shipments.validation.js';
 
 import { UserRole } from '../../shared/constants/index.js';
@@ -72,6 +74,7 @@ shipmentsRouter.patch(
 shipmentsRouter.patch(
   '/:id/status',
   requireAuth,
+  requireRole(UserRole.ADMIN, UserRole.MANAGER),
   validateRequest({ params: ShipmentIdParamSchema, body: ShipmentStatusBodySchema }),
   asyncHandler(patchShipmentStatus)
 );
@@ -82,6 +85,14 @@ shipmentsRouter.post(
   upload.single('file'),
   validateRequest({ params: ShipmentIdParamSchema, body: ShipmentProofBodySchema }),
   asyncHandler(uploadShipmentProof)
+);
+shipmentsRouter.post(
+  '/:id/disputes',
+  requireAuth,
+  requireRole(UserRole.ADMIN, UserRole.MANAGER),
+  upload.single('evidence'),
+  validateRequest({ params: ShipmentIdParamSchema, body: CreateDisputeBodySchema }),
+  asyncHandler(createDispute)
 );
 shipmentsRouter.delete(
   '/:id',

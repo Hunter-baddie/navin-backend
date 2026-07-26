@@ -3,11 +3,13 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { AppError } from '../../shared/http/errors.js';
 import { env } from '../../env.js';
+import { config } from '../../config/index.js';
 import { UserModel, OrganizationModel, UserRole } from '../users/users.model.js';
 import type { OrganizationType } from '../../shared/types/user.js';
 import { blockToken, isTokenBlocked } from '../../infra/redis/tokenBlocklist.js';
 import type { SignupInput, LoginInput } from './auth.validation.js';
 import { logger } from '../../shared/logger/logger.js';
+import { sendEmail, resetPasswordEmailHtml } from '../../services/email.service.js';
 
 export interface TokenPayload {
   userId: string;
@@ -214,7 +216,7 @@ export async function logout(token: string): Promise<void> {
 const RESET_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
 
 /**
- * Generates a password-reset token and logs it (no email provider configured).
+ * Generates a password-reset token and emails it to the user.
  * Always returns success to prevent email enumeration.
  * @param {string} email - Target email address.
  */
@@ -232,8 +234,17 @@ export async function forgotPassword(email: string): Promise<void> {
     { expiresIn: RESET_TOKEN_TTL_SECONDS }
   );
 
-  // In production this token would be sent via email.
-  logger.info({ userId: user._id.toString(), resetToken }, 'Password reset token generated');
+  const resetLink = `${config.frontendUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+  try {
+    await sendEmail({
+      to: email,
+      subject: 'Reset Your Navin Password',
+      html: resetPasswordEmailHtml(resetLink),
+    });
+  } catch (err) {
+    logger.error({ err, userId: user._id.toString() }, 'Failed to send password reset email');
+  }
 }
 
 /**

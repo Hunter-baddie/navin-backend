@@ -443,7 +443,162 @@ paths:
         '403':
           description: Forbidden
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/shipment-templates:
+    get:
+      summary: List all shipment templates for the caller's organization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Templates retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShipmentTemplate'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    post:
+      summary: Create a new shipment template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShipmentTemplateRequest'
+      responses:
+        '201':
+          description: Template created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ShipmentTemplate'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+  /api/shipment-templates/{id}:
+    get:
+      summary: Get a shipment template by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ShipmentTemplate'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Template not found
+    patch:
+      summary: Update a shipment template
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShipmentTemplateRequest'
+      responses:
+        '200':
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ShipmentTemplate'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Template not found
+    delete:
+      summary: Soft-delete a shipment template
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ShipmentTemplate'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Template not found
   /api/auth/login:
+
     post:
       summary: Authenticate a user
       security: []
@@ -521,6 +676,47 @@ paths:
                     nullable: true
         '401':
           description: Missing or invalid auth token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/auth/forgot-password:
+    post:
+      summary: Request a password reset email
+      description: >-
+        Sends a password reset email to the specified address. Always returns a
+        success response to prevent email enumeration.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Registered email address
+      responses:
+        '200':
+          description: Reset email sent (or silently ignored for unknown emails)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: 'null'
+        '400':
+          description: Invalid email format
           content:
             application/json:
               schema:
@@ -661,7 +857,10 @@ paths:
   /api/users/invitations:
     post:
       summary: Generate user invitation link
-      description: Creates a signed 48-hour invitation token bound to the inviter organization and target role.
+      description: >-
+        Creates a signed 48-hour invitation token bound to the inviter
+        organization and target role, and sends an invitation email to the
+        target address.
       security:
         - bearerAuth: []
       requestBody:
@@ -1427,6 +1626,14 @@ paths:
             (e.g. CREATED,IN_TRANSIT).
           example: CREATED,IN_TRANSIT
         - in: query
+          name: priority
+          schema:
+            type: string
+          description: >
+            Filter by priority. Single value or comma-separated list
+            (e.g. URGENT,STANDARD).
+          example: URGENT,STANDARD
+        - in: query
           name: page
           schema:
             type: integer
@@ -1476,6 +1683,19 @@ paths:
             type: string
             format: date-time
           description: Include shipments created at or before this timestamp
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [createdAt, priority, expectedDelivery]
+          description: Field to sort by
+        - in: query
+          name: sortOrder
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort order
       responses:
         '200':
           description: Paginated shipments retrieved successfully
@@ -1705,14 +1925,86 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
           description: Storage unavailable
+  /api/shipments/{id}/disputes:
+    post:
+      summary: Create a dispute with evidence
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - type
+                - description
+              properties:
+                type:
+                  type: string
+                  enum: [WRONG_GOODS, DAMAGED, NOT_DELIVERED, PAYMENT_DISAGREEMENT, OTHER]
+                description:
+                  type: string
+                evidence:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Dispute created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      referenceNumber:
+                        type: string
+                      status:
+                        type: string
+                      type:
+                        type: string
+                      description:
+                        type: string
+                      evidenceUrl:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+        '400':
+          description: Missing or invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Shipment not found
+        '413':
+          description: Payload too large
+        '503':
+          description: Storage unavailable
   /api/shipments/{id}/eta:
     get:
       summary: Get shipment ETA from recent telemetry
       description: Returns ETA, distance remaining, average speed, and confidence when shipment is in transit.
-  /api/shipments/{id}/status:
-    patch:
-      summary: Update shipment status
-      description: Update the current shipment status (e.g., IN_TRANSIT, DELIVERED). Requires authentication.
       security:
         - bearerAuth: []
       parameters:
@@ -1759,6 +2051,18 @@ paths:
           description: Unauthorized
         '404':
           description: Shipment or telemetry data not found
+  /api/shipments/{id}/status:
+    patch:
+      summary: Update shipment status
+      description: Update the current shipment status (e.g., IN_TRANSIT, DELIVERED). Requires ADMIN or MANAGER role.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -1770,7 +2074,11 @@ paths:
           description: Shipment status updated
         '400':
           description: Invalid request
-    /api/shipments/bulk/status:
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient role
+  /api/shipments/bulk/status:
     patch:
       summary: Bulk update shipment status
       description: Update status for multiple shipments at once. Requires ADMIN or MANAGER role. Accepts up to 50 shipment IDs.
@@ -2046,7 +2354,59 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
+    ShipmentTemplateFields:
+      type: object
+      properties:
+        origin:
+          type: string
+        destination:
+          type: string
+        itemDescription:
+          type: string
+        weight:
+          type: number
+        recipientName:
+          type: string
+        recipientContact:
+          type: string
+    ShipmentTemplate:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        fields:
+          $ref: '#/components/schemas/ShipmentTemplateFields'
+        organizationId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateShipmentTemplateRequest:
+      type: object
+      required:
+        - name
+        - fields
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        fields:
+          $ref: '#/components/schemas/ShipmentTemplateFields'
+    UpdateShipmentTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        fields:
+          $ref: '#/components/schemas/ShipmentTemplateFields'
     ErrorResponse:
+
       type: object
       required:
         - success
