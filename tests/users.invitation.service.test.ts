@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockSendEmail = jest.fn() as any;
+
 describe('users invitation service', () => {
   beforeEach(() => {
     jest.resetModules();
@@ -22,6 +25,12 @@ describe('users invitation service', () => {
       },
     }));
 
+    await jest.unstable_mockModule('../src/services/email.service.js', () => ({
+      sendEmail: mockSendEmail,
+      resetPasswordEmailHtml: (link: string) => `<html>${link}</html>`,
+      invitationEmailHtml: (link: string) => `<html>${link}</html>`,
+    }));
+
     const service = await import('../src/modules/users/users.service.js');
 
     const invitation = await service.generateInvitationLink({
@@ -42,6 +51,81 @@ describe('users invitation service', () => {
     expect(verified.expiresAt).toBeTruthy();
   });
 
+  it('sends an invitation email to the target address', async () => {
+    mockSendEmail.mockClear();
+
+    await jest.unstable_mockModule('../src/modules/users/users.repo.js', () => ({
+      createUser: jest.fn(),
+      findUserByEmail: jest.fn(async () => null),
+      findUsersByOrganizationId: jest.fn(),
+    }));
+
+    await jest.unstable_mockModule('../src/modules/users/users.model.js', () => ({
+      UserModel: {
+        findByIdAndUpdate: jest.fn(),
+        create: jest.fn(),
+      },
+    }));
+
+    await jest.unstable_mockModule('../src/services/email.service.js', () => ({
+      sendEmail: mockSendEmail,
+      resetPasswordEmailHtml: (link: string) => `<html>${link}</html>`,
+      invitationEmailHtml: (link: string) => `<html>${link}</html>`,
+    }));
+
+    const service = await import('../src/modules/users/users.service.js');
+
+    await service.generateInvitationLink({
+      email: 'invitee@example.com',
+      role: 'VIEWER',
+      inviterUserId: 'admin-1',
+      inviterRole: 'ADMIN',
+      organizationId: 'org-1',
+    });
+
+    expect(mockSendEmail).toHaveBeenCalledTimes(1);
+    expect(mockSendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'invitee@example.com' }),
+    );
+  });
+
+  it('includes a valid invite link in the email body', async () => {
+    mockSendEmail.mockClear();
+
+    await jest.unstable_mockModule('../src/modules/users/users.repo.js', () => ({
+      createUser: jest.fn(),
+      findUserByEmail: jest.fn(async () => null),
+      findUsersByOrganizationId: jest.fn(),
+    }));
+
+    await jest.unstable_mockModule('../src/modules/users/users.model.js', () => ({
+      UserModel: {
+        findByIdAndUpdate: jest.fn(),
+        create: jest.fn(),
+      },
+    }));
+
+    await jest.unstable_mockModule('../src/services/email.service.js', () => ({
+      sendEmail: mockSendEmail,
+      resetPasswordEmailHtml: (link: string) => `<html>${link}</html>`,
+      invitationEmailHtml: (link: string) => `<html>${link}</html>`,
+    }));
+
+    const service = await import('../src/modules/users/users.service.js');
+
+    const result = await service.generateInvitationLink({
+      email: 'linktest@example.com',
+      role: 'MANAGER',
+      inviterUserId: 'admin-1',
+      inviterRole: 'ADMIN',
+      organizationId: 'org-1',
+    });
+
+    const call = (mockSendEmail.mock.calls as any)[0] as [{ to: string; subject: string; html: string }];
+    expect(call[0].html).toContain(result.inviteLink);
+    expect(result.inviteLink).toContain('/signup?token=');
+  });
+
   it('rejects invitation creation for forbidden role mapping', async () => {
     await jest.unstable_mockModule('../src/modules/users/users.repo.js', () => ({
       createUser: jest.fn(),
@@ -54,6 +138,12 @@ describe('users invitation service', () => {
         findByIdAndUpdate: jest.fn(),
         create: jest.fn(),
       },
+    }));
+
+    await jest.unstable_mockModule('../src/services/email.service.js', () => ({
+      sendEmail: mockSendEmail,
+      resetPasswordEmailHtml: (link: string) => `<html>${link}</html>`,
+      invitationEmailHtml: (link: string) => `<html>${link}</html>`,
     }));
 
     const service = await import('../src/modules/users/users.service.js');
@@ -81,6 +171,12 @@ describe('users invitation service', () => {
         findByIdAndUpdate: jest.fn(),
         create: jest.fn(),
       },
+    }));
+
+    await jest.unstable_mockModule('../src/services/email.service.js', () => ({
+      sendEmail: mockSendEmail,
+      resetPasswordEmailHtml: (link: string) => `<html>${link}</html>`,
+      invitationEmailHtml: (link: string) => `<html>${link}</html>`,
     }));
 
     const service = await import('../src/modules/users/users.service.js');
