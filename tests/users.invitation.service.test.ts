@@ -15,6 +15,7 @@ describe('users invitation service', () => {
     await jest.unstable_mockModule('../src/modules/users/users.repo.js', () => ({
       createUser: jest.fn(),
       findUserByEmail,
+      findUserById: jest.fn(),
       findUsersByOrganizationId: jest.fn(),
     }));
 
@@ -57,6 +58,7 @@ describe('users invitation service', () => {
     await jest.unstable_mockModule('../src/modules/users/users.repo.js', () => ({
       createUser: jest.fn(),
       findUserByEmail: jest.fn(async () => null),
+      findUserById: jest.fn(),
       findUsersByOrganizationId: jest.fn(),
     }));
 
@@ -95,6 +97,7 @@ describe('users invitation service', () => {
     await jest.unstable_mockModule('../src/modules/users/users.repo.js', () => ({
       createUser: jest.fn(),
       findUserByEmail: jest.fn(async () => null),
+      findUserById: jest.fn(),
       findUsersByOrganizationId: jest.fn(),
     }));
 
@@ -130,6 +133,7 @@ describe('users invitation service', () => {
     await jest.unstable_mockModule('../src/modules/users/users.repo.js', () => ({
       createUser: jest.fn(),
       findUserByEmail: jest.fn(async () => null),
+      findUserById: jest.fn(),
       findUsersByOrganizationId: jest.fn(),
     }));
 
@@ -163,6 +167,7 @@ describe('users invitation service', () => {
     await jest.unstable_mockModule('../src/modules/users/users.repo.js', () => ({
       createUser: jest.fn(),
       findUserByEmail: jest.fn(async () => null),
+      findUserById: jest.fn(),
       findUsersByOrganizationId: jest.fn(),
     }));
 
