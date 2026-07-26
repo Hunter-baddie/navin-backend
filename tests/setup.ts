@@ -34,12 +34,21 @@ beforeAll(async () => {
   }));
 
   try {
-    // Prefer MongoMemoryServer when pointing at the default local URI
-    if (!process.env.MONGO_URI || process.env.MONGO_URI.includes('127.0.0.1:27017')) {
+    // Prefer MongoMemoryServer when pointing at the default local URI.
+    // Set SKIP_MONGO_MEMORY=1 to skip (fully mocked unit suites / no MMS binary).
+    if (
+      process.env.SKIP_MONGO_MEMORY !== '1' &&
+      (!process.env.MONGO_URI || process.env.MONGO_URI.includes('127.0.0.1:27017'))
+    ) {
       mongoServer = await MongoMemoryServer.create({
         binary: { checkMD5: false },
       });
       process.env.MONGO_URI = mongoServer.getUri();
+    }
+
+    if (process.env.SKIP_MONGO_MEMORY === '1') {
+      mongoReady = false;
+      return;
     }
 
     if (mongoose.connection.readyState === 0) {
