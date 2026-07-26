@@ -112,6 +112,7 @@ await jest.unstable_mockModule('../src/infra/socket/io.js', () => ({
   emitStatusUpdate: jest.fn(),
   emitAnomalyDetected: jest.fn(),
   emitTelemetryUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
 }));
 
 const { buildApp } = await import('../src/app.js');

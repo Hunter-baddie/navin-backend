@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Documented the telemetry ingestion pipeline as a Mermaid sequence diagram in `docs/telemetry-pipeline.md`, including BullMQ queue names (`transaction_queue`, `alert_queue`) and the 25/80 vs legacy 85/90 threshold note (#396)
+- Expanded Swagger schemas for `POST /api/webhooks/iot` (union payload + 202 response) and `POST /api/webhooks/stellar` (#396)
 - Added shared `PASSWORD_MIN_LENGTH` / `PASSWORD_MIN_LENGTH_MESSAGE` constants used by all password Zod schemas
 - Added `STELLAR_WEBHOOK_SECRET` to `src/env.ts` and HMAC signature tests for `POST /api/webhooks/stellar`
 - Added `docs/PAGINATION.md` and shared helpers in `src/shared/utils/pagination.ts` documenting cursor vs offset conventions
@@ -35,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Repaired merge-corrupted `src/config/index.ts` and duplicate keys in `src/env.ts` so `npm run build` succeeds (#396)
 - Restored missing `organizationsRouter` import in `buildApp` and repaired broken `auth.controller` / Swagger YAML so pagination and search suites can boot
 - Confirmed telemetry pagination and battery-threshold anomaly tests assert auth + `data` array envelope correctly
 

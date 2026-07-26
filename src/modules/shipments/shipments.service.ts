@@ -560,7 +560,7 @@ export const updateShipmentStatusService = async (
   try {
     await createLedgerBlockService({
       shipmentId: id,
-      eventType: status as MilestoneEvent,
+      eventType: status as unknown as MilestoneEvent,
       transactionHash: shipment.stellarTxHash ?? undefined,
       actor: actor?.userId,
       metadata: { previousStatus },

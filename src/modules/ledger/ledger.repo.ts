@@ -60,7 +60,7 @@ export async function getLedgerBlocks(filters?: {
     }),
   ]);
 
-  return paginateCursor(data, limit);
+  return { ...paginateCursor(data, limit), total };
 }
 
 export async function getLedgerBlockById(id: string): Promise<ILedgerBlock | null> {
