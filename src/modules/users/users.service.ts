@@ -1,11 +1,19 @@
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { AppError } from '../../shared/http/errors.js';
-import { createUser, findUserByEmail, findUserById, findUsersByOrganizationId } from './users.repo.js';
+import {
+  createUser,
+  findUserByEmail,
+  findUserById,
+  findUsersByOrganizationId,
+} from './users.repo.js';
 import { UserModel } from './users.model.js';
 import jwt from 'jsonwebtoken';
 import { env } from '../../env.js';
+import { config } from '../../config/index.js';
 import { UserRole } from '../../shared/constants/index.js';
+import { sendEmail, invitationEmailHtml } from '../../services/email.service.js';
+import { logger } from '../../shared/logger/logger.js';
 
 /**
  * Creates a new user account under the caller's organization.
@@ -119,7 +127,6 @@ export async function deleteUser(id: string) {
 }
 
 const INVITE_EXPIRY_SECONDS = 48 * 60 * 60;
-const INVITE_LINK_BASE_URL = 'https://app.navin.local/signup';
 
 type InviteTokenPayload = {
   type: 'USER_INVITATION';
@@ -178,7 +185,17 @@ export async function generateInvitationLink(input: {
   };
 
   const token = jwt.sign(tokenPayload, env.JWT_SECRET, { expiresIn: INVITE_EXPIRY_SECONDS });
-  const inviteLink = `${INVITE_LINK_BASE_URL}?token=${encodeURIComponent(token)}`;
+  const inviteLink = `${config.frontendUrl}/signup?token=${encodeURIComponent(token)}`;
+
+  try {
+    await sendEmail({
+      to: input.email,
+      subject: "You're Invited to Navin",
+      html: invitationEmailHtml(inviteLink),
+    });
+  } catch (err) {
+    logger.error({ err, email: input.email }, 'Failed to send invitation email');
+  }
 
   return { token, inviteLink, expiresInSeconds: INVITE_EXPIRY_SECONDS };
 }

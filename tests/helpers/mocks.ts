@@ -160,3 +160,22 @@ export function createSocketIoMock(overrides: Partial<SocketIoMock> = {}): Socke
     ...overrides,
   };
 }
+
+export type EmailServiceMock = {
+  sendEmail: MockFn;
+  resetPasswordEmailHtml: (link: string) => string;
+  invitationEmailHtml: (link: string) => string;
+};
+
+/**
+ * Full mock of `src/services/email.service.js` named exports.
+ */
+export function createEmailServiceMock(overrides: Partial<EmailServiceMock> = {}): EmailServiceMock {
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sendEmail: jest.fn(async () => undefined) as any,
+    resetPasswordEmailHtml: (link: string) => `<html>Reset: ${link}</html>`,
+    invitationEmailHtml: (link: string) => `<html>Invite: ${link}</html>`,
+    ...overrides,
+  };
+}
