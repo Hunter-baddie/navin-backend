@@ -13,14 +13,35 @@ import {
   getShipmentEtaService,
   exportShipmentsService,
   shipmentsToCSV,
+  uploadShipmentDocumentService,
+  uploadShipmentPhotoService,
+  DOCUMENT_UPLOAD_CONSTRAINTS,
+  PHOTO_UPLOAD_CONSTRAINTS,
 } from './shipments.service.js';
 import { sendResponse } from '../../shared/http/sendResponse.js';
-import type { GetShipmentsQuery, ExportShipmentsQuery, ShipmentTimelineQuery } from './shipments.validation.js';
+import type {
+  GetShipmentsQuery,
+  ExportShipmentsQuery,
+  ShipmentTimelineQuery,
+} from './shipments.validation.js';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
 export const getShipments = async (req: Request, res: Response) => {
   const query = req.query as unknown as GetShipmentsQuery;
-  const { status, priority, page = 1, limit = 20, origin, destination, trackingNumber, q, from, to, sortBy, sortOrder } = query;
+  const {
+    status,
+    priority,
+    page = 1,
+    limit = 20,
+    origin,
+    destination,
+    trackingNumber,
+    q,
+    from,
+    to,
+    sortBy,
+    sortOrder,
+  } = query;
   // Build explicit filters object to avoid unvalidated query parameters
   const filters: Record<string, unknown> = {};
   if (req.user?.organizationId) {
@@ -136,6 +157,74 @@ export const uploadShipmentProof = async (req: Request, res: Response) => {
   });
 
   sendResponse(res, 200, true, 'Proof uploaded', shipment);
+};
+
+type DocumentBody = {
+  type:
+    | 'BILL_OF_LADING'
+    | 'CUSTOMS_DECLARATION'
+    | 'INSURANCE_CERTIFICATE'
+    | 'PACKING_LIST'
+    | 'INVOICE'
+    | 'OTHER';
+};
+
+export const uploadShipmentDocument = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { type } = req.body as DocumentBody;
+  const file = req.file;
+
+  if (!file) {
+    throw new AppError(400, 'No file uploaded', ErrorCodes.BAD_REQUEST);
+  }
+
+  if (!DOCUMENT_UPLOAD_CONSTRAINTS.mimeTypes.includes(file.mimetype)) {
+    throw new AppError(
+      415,
+      `Invalid MIME type. Allowed: ${DOCUMENT_UPLOAD_CONSTRAINTS.mimeTypes.join(', ')}`,
+      ErrorCodes.INVALID_MIME_TYPE
+    );
+  }
+
+  if (file.size > DOCUMENT_UPLOAD_CONSTRAINTS.maxSize) {
+    throw new AppError(
+      413,
+      `File too large. Maximum size is ${DOCUMENT_UPLOAD_CONSTRAINTS.maxSize / (1024 * 1024)}MB`,
+      ErrorCodes.FILE_TOO_LARGE
+    );
+  }
+
+  const document = await uploadShipmentDocumentService(id, file, type, req.user?.userId);
+  sendResponse(res, 201, true, 'Document uploaded', document);
+};
+
+export const uploadShipmentPhoto = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { caption } = req.body as { caption?: string };
+  const file = req.file;
+
+  if (!file) {
+    throw new AppError(400, 'No file uploaded', ErrorCodes.BAD_REQUEST);
+  }
+
+  if (!PHOTO_UPLOAD_CONSTRAINTS.mimeTypes.includes(file.mimetype)) {
+    throw new AppError(
+      415,
+      `Invalid MIME type. Allowed: ${PHOTO_UPLOAD_CONSTRAINTS.mimeTypes.join(', ')}`,
+      ErrorCodes.INVALID_MIME_TYPE
+    );
+  }
+
+  if (file.size > PHOTO_UPLOAD_CONSTRAINTS.maxSize) {
+    throw new AppError(
+      413,
+      `File too large. Maximum size is ${PHOTO_UPLOAD_CONSTRAINTS.maxSize / (1024 * 1024)}MB`,
+      ErrorCodes.FILE_TOO_LARGE
+    );
+  }
+
+  const photo = await uploadShipmentPhotoService(id, file, caption, req.user?.userId);
+  sendResponse(res, 201, true, 'Photo uploaded', photo);
 };
 
 export const createDispute = async (req: Request, res: Response) => {

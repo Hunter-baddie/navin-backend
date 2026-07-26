@@ -8,13 +8,19 @@ import { Anomaly } from '../anomaly/anomaly.model.js';
 import { Telemetry } from '../telemetry/telemetry.model.js';
 import { TelemetryAnchorStatus } from '../../shared/types/telemetry.js';
 import { AppError } from '../../shared/http/errors.js';
-import { IShipment, ShipmentStatus } from '../../shared/types/shipment.js';
+import {
+  IShipment,
+  ShipmentStatus,
+  MilestoneEvent,
+  type ShipmentDocumentType,
+} from '../../shared/types/shipment.js';
 import { auditLog } from '../../shared/utils/auditLog.js';
 import { logger } from '../../shared/logger/logger.js';
 import { invalidateAnalyticsPerformanceCache } from '../analytics/analytics.cache.js';
 import * as paymentsRepo from '../payments/payments.repo.js';
 import { PaymentStatus } from '../payments/payments.model.js';
 import { validateStatusTransition } from '../../shared/constants/shipmentStateMachine.js';
+import { createLedgerBlockService } from '../ledger/ledger.service.js';
 
 import { offsetSkip } from '../../shared/utils/pagination.js';
 import {
@@ -182,7 +188,11 @@ export const findShipments = async (
   limit: number,
   sort: Record<string, 1 | -1> = { createdAt: -1, _id: -1 }
 ): Promise<IShipment[]> => {
-  return Shipment.find(query).sort(sort as any).skip(skip).limit(limit).lean();
+  return Shipment.find(query)
+    .sort(sort as any)
+    .skip(skip)
+    .limit(limit)
+    .lean();
 };
 
 /**
@@ -205,7 +215,21 @@ export const getShipmentsService = async (params: {
   sortOrder?: 'asc' | 'desc';
   filters: Record<string, unknown>;
 }): Promise<ShipmentListResult> => {
-  const { status, priority, page, limit, origin, destination, trackingNumber, q, from, to, sortBy, sortOrder, filters } = params;
+  const {
+    status,
+    priority,
+    page,
+    limit,
+    origin,
+    destination,
+    trackingNumber,
+    q,
+    from,
+    to,
+    sortBy,
+    sortOrder,
+    filters,
+  } = params;
   const query: FilterQuery<unknown> = {};
 
   if (filters.organizationId) {
@@ -277,22 +301,14 @@ export const getShipmentByIdService = async (
   const isSuperAdmin = context?.role === UserRole.SUPER_ADMIN;
   if (!isSuperAdmin) {
     if (!context?.organizationId) {
-      throw new AppError(
-        403,
-        'Forbidden: insufficient access to shipment',
-        ErrorCodes.FORBIDDEN
-      );
+      throw new AppError(403, 'Forbidden: insufficient access to shipment', ErrorCodes.FORBIDDEN);
     }
     const authorized = await isAuthorizedForShipment({
       shipmentId: id,
       organizationId: context.organizationId,
     });
     if (!authorized) {
-      throw new AppError(
-        403,
-        'Forbidden: insufficient access to shipment',
-        ErrorCodes.FORBIDDEN
-      );
+      throw new AppError(403, 'Forbidden: insufficient access to shipment', ErrorCodes.FORBIDDEN);
     }
   }
 
@@ -420,9 +436,7 @@ export const getShipmentTimelineService = async (
   const hasMore = page.length > params.limit;
   const pageEvents = hasMore ? page.slice(0, params.limit) : page;
   const nextCursor =
-    hasMore && pageEvents.length > 0
-      ? pageEvents[pageEvents.length - 1].cursorKey
-      : null;
+    hasMore && pageEvents.length > 0 ? pageEvents[pageEvents.length - 1].cursorKey : null;
 
   const data = pageEvents.map(({ cursorKey: _cursorKey, ...event }) => event);
 
@@ -542,6 +556,22 @@ export const updateShipmentStatusService = async (
   await invalidateAnalyticsPerformanceCache();
   await invalidateShipmentEtaCache(id);
 
+  // Write ledger block for every status change
+  try {
+    await createLedgerBlockService({
+      shipmentId: id,
+      eventType: status as MilestoneEvent,
+      transactionHash: shipment.stellarTxHash ?? undefined,
+      actor: actor?.userId,
+      metadata: { previousStatus },
+    });
+  } catch (ledgerErr) {
+    logger.warn(
+      { err: ledgerErr, shipmentId: id, status },
+      'Failed to create ledger block for status change'
+    );
+  }
+
   // Trigger escrow release on delivery
   if (status === ShipmentStatus.DELIVERED) {
     try {
@@ -558,10 +588,23 @@ export const updateShipmentStatusService = async (
             PaymentStatus.RELEASED,
             releaseResult.transactionHash
           );
-          console.log(
-            `[Shipment] Escrow released for shipment ${id}, ` +
-              `tx: ${releaseResult.transactionHash}`
-          );
+
+          // Write ledger block for settlement initiation
+          try {
+            await createLedgerBlockService({
+              shipmentId: id,
+              eventType: MilestoneEvent.SETTLEMENT_INITIATED,
+              transactionHash: releaseResult.transactionHash,
+              actor: actor?.userId,
+              metadata: { paymentId: payment._id.toString() },
+            });
+          } catch (settlementLedgerErr) {
+            logger.warn(
+              { err: settlementLedgerErr, shipmentId: id },
+              'Failed to create ledger block for settlement initiation'
+            );
+          }
+
           logger.info(
             { shipmentId: id, transactionHash: releaseResult.transactionHash },
             'Escrow released for shipment'
@@ -640,6 +683,25 @@ export const uploadShipmentProofService = async (
     },
     { new: true }
   );
+
+  // Write PROOF_SUBMITTED ledger block
+  try {
+    await createLedgerBlockService({
+      shipmentId: id,
+      eventType: MilestoneEvent.PROOF_SUBMITTED,
+      transactionHash: shipment?.stellarTxHash ?? undefined,
+      metadata: {
+        proofUrl,
+        recipientSignatureName: proof.recipientSignatureName,
+      },
+    });
+  } catch (ledgerErr) {
+    logger.warn(
+      { err: ledgerErr, shipmentId: id },
+      'Failed to create ledger block for proof upload'
+    );
+  }
+
   return shipment;
 };
 
@@ -676,7 +738,7 @@ export const createDisputeService = async (
   }
 
   const referenceNumber = `DSP-${Math.floor(100000 + Math.random() * 900000)}`;
-  
+
   const dispute = {
     referenceNumber,
     status: 'PENDING',
@@ -692,6 +754,110 @@ export const createDisputeService = async (
 
   // Return the newly created dispute (the last one in the array)
   return shipment.disputes[shipment.disputes.length - 1];
+};
+
+const DOCUMENT_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+const DOCUMENT_MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+
+const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const PHOTO_MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_PHOTOS_PER_SHIPMENT = 10;
+
+export const DOCUMENT_UPLOAD_CONSTRAINTS = {
+  mimeTypes: DOCUMENT_MIME_TYPES,
+  maxSize: DOCUMENT_MAX_SIZE,
+} as const;
+
+export const PHOTO_UPLOAD_CONSTRAINTS = {
+  mimeTypes: PHOTO_MIME_TYPES,
+  maxSize: PHOTO_MAX_SIZE,
+  maxPerShipment: MAX_PHOTOS_PER_SHIPMENT,
+} as const;
+
+export const uploadShipmentDocumentService = async (
+  id: string,
+  file: Express.Multer.File,
+  docType: ShipmentDocumentType,
+  userId?: string
+) => {
+  let fileUrl: string;
+
+  try {
+    fileUrl = await mockUploadToStorage(file);
+  } catch {
+    throw new AppError(
+      503,
+      'Storage bucket unavailable, please try again later.',
+      'SERVICE_UNAVAILABLE'
+    );
+  }
+
+  const shipment = await Shipment.findById(id);
+  if (!shipment) {
+    throw new AppError(404, 'Shipment not found', ErrorCodes.SHIPMENT_NOT_FOUND);
+  }
+
+  const document = {
+    url: fileUrl,
+    fileName: file.originalname,
+    mimeType: file.mimetype,
+    type: docType,
+    size: file.size,
+    uploadedBy: userId,
+    uploadedAt: new Date(),
+  };
+
+  shipment.documents.push(document as never);
+  await shipment.save();
+
+  return shipment.documents[shipment.documents.length - 1];
+};
+
+export const uploadShipmentPhotoService = async (
+  id: string,
+  file: Express.Multer.File,
+  caption?: string,
+  userId?: string
+) => {
+  let fileUrl: string;
+
+  try {
+    fileUrl = await mockUploadToStorage(file);
+  } catch {
+    throw new AppError(
+      503,
+      'Storage bucket unavailable, please try again later.',
+      'SERVICE_UNAVAILABLE'
+    );
+  }
+
+  const shipment = await Shipment.findById(id);
+  if (!shipment) {
+    throw new AppError(404, 'Shipment not found', ErrorCodes.SHIPMENT_NOT_FOUND);
+  }
+
+  if (shipment.photos.length >= MAX_PHOTOS_PER_SHIPMENT) {
+    throw new AppError(
+      400,
+      `Maximum ${MAX_PHOTOS_PER_SHIPMENT} photos per shipment`,
+      ErrorCodes.PHOTO_LIMIT_EXCEEDED
+    );
+  }
+
+  const photo = {
+    url: fileUrl,
+    fileName: file.originalname,
+    mimeType: file.mimetype,
+    caption,
+    size: file.size,
+    uploadedBy: userId,
+    uploadedAt: new Date(),
+  };
+
+  shipment.photos.push(photo as never);
+  await shipment.save();
+
+  return shipment.photos[shipment.photos.length - 1];
 };
 
 const EXPORT_MAX_RECORDS = 10_000;
@@ -743,7 +909,15 @@ export const exportShipmentsService = async (params: {
  * Converts shipment records to CSV string.
  */
 export function shipmentsToCSV(shipments: IShipment[]): string {
-  const headers = ['_id', 'trackingNumber', 'origin', 'destination', 'status', 'createdAt', 'updatedAt'];
+  const headers = [
+    '_id',
+    'trackingNumber',
+    'origin',
+    'destination',
+    'status',
+    'createdAt',
+    'updatedAt',
+  ];
   const escape = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const rows = shipments.map(s =>
     headers.map(h => escape((s as unknown as Record<string, unknown>)[h])).join(',')

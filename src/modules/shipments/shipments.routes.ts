@@ -13,6 +13,8 @@ import {
   deleteShipment,
   getShipmentEta,
   exportShipments,
+  uploadShipmentDocument,
+  uploadShipmentPhoto,
 } from './shipments.controller.js';
 import { requireRole } from '../../shared/middleware/requireRole.js';
 import { requireAuth } from '../../shared/middleware/requireAuth.js';
@@ -27,12 +29,40 @@ import {
   ShipmentStatusBodySchema,
   ShipmentTimelineQuerySchema,
   CreateDisputeBodySchema,
+  UploadDocumentBodySchema,
+  UploadPhotoBodySchema,
 } from './shipments.validation.js';
 
 import { UserRole } from '../../shared/constants/index.js';
 
 export const shipmentsRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+const DOCUMENT_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (DOCUMENT_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid MIME type'));
+    }
+  },
+});
+
+const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (PHOTO_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid MIME type'));
+    }
+  },
+});
 
 shipmentsRouter.get(
   '/export',
@@ -85,6 +115,22 @@ shipmentsRouter.post(
   upload.single('file'),
   validateRequest({ params: ShipmentIdParamSchema, body: ShipmentProofBodySchema }),
   asyncHandler(uploadShipmentProof)
+);
+shipmentsRouter.post(
+  '/:id/documents',
+  requireAuth,
+  requireRole(UserRole.ADMIN, UserRole.MANAGER),
+  documentUpload.single('file'),
+  validateRequest({ params: ShipmentIdParamSchema, body: UploadDocumentBodySchema }),
+  asyncHandler(uploadShipmentDocument)
+);
+shipmentsRouter.post(
+  '/:id/photos',
+  requireAuth,
+  requireRole(UserRole.ADMIN, UserRole.MANAGER),
+  photoUpload.single('file'),
+  validateRequest({ params: ShipmentIdParamSchema, body: UploadPhotoBodySchema }),
+  asyncHandler(uploadShipmentPhoto)
 );
 shipmentsRouter.post(
   '/:id/disputes',

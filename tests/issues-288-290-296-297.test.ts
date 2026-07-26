@@ -147,6 +147,10 @@ describe('#296 exportShipmentsService + shipmentsToCSV', () => {
       },
       ShipmentStatus: { CREATED: 'CREATED', DELIVERED: 'DELIVERED' },
     }));
+
+    await jest.unstable_mockModule('../src/modules/ledger/ledger.service.js', () => ({
+      createLedgerBlockService: jest.fn(),
+    }));
   });
 
   it('returns records when count ≤ 10,000', async () => {

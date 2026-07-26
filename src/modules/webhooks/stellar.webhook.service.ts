@@ -3,6 +3,9 @@ import * as paymentsService from '../payments/payments.service.js';
 import { PaymentStatus } from '../payments/payments.model.js';
 import type { StellarWebhookPayload } from './stellar.webhook.validation.js';
 import { logger } from '../../shared/logger/logger.js';
+import { createLedgerBlockService } from '../ledger/ledger.service.js';
+import { MilestoneEvent } from '../../shared/types/shipment.js';
+import { PaymentModel } from '../payments/payments.model.js';
 
 /**
  * Handles incoming Stellar proof-of-delivery webhook events.
@@ -37,6 +40,21 @@ async function handleReleaseEvent(paymentId: string, transactionHash: string) {
     status: PaymentStatus.RELEASED,
     stellarTxHash: transactionHash,
   });
+
+  // Write SETTLEMENT_COMPLETED ledger block
+  try {
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (payment) {
+      await createLedgerBlockService({
+        shipmentId: payment.shipmentId.toString(),
+        eventType: MilestoneEvent.SETTLEMENT_COMPLETED,
+        transactionHash,
+        metadata: { paymentId },
+      });
+    }
+  } catch (ledgerErr) {
+    logger.warn({ err: ledgerErr, paymentId }, 'Failed to create ledger block for settlement completion');
+  }
 
   logger.info({ paymentId, transactionHash }, 'Payment marked as RELEASED');
 

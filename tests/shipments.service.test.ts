@@ -35,6 +35,10 @@ await jest.unstable_mockModule('../src/services/mockStorageService.js', () => ({
   mockUploadToStorage: mockUploadToStorageMock,
 }));
 
+await jest.unstable_mockModule('../src/modules/ledger/ledger.service.js', () => ({
+  createLedgerBlockService: jest.fn(async () => ({ _id: 'lb-1' })),
+}));
+
 const { uploadShipmentProofService, deleteShipmentService } = await import('../src/modules/shipments/shipments.service.js');
 
 describe('Shipments Service', () => {

@@ -1925,6 +1925,122 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
           description: Storage unavailable
+  /api/shipments/{id}/documents:
+    post:
+      summary: Upload a document to a shipment
+      description: >
+        Upload a document (PDF or image) for a shipment. Maximum file size is 10MB.
+        Accepted MIME types: application/pdf, image/jpeg, image/png, image/webp.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadDocumentRequest'
+      responses:
+        '201':
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ShipmentDocument'
+        '400':
+          description: Missing file or invalid type enum
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '413':
+          description: File too large (max 10MB)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Invalid MIME type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+  /api/shipments/{id}/photos:
+    post:
+      summary: Upload a photo to a shipment
+      description: >
+        Upload a photo (image only) for a shipment. Maximum file size is 5MB.
+        Maximum 10 photos per shipment. Accepted MIME types: image/jpeg, image/png, image/webp, image/heic, image/heif.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadPhotoRequest'
+      responses:
+        '201':
+          description: Photo uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/ShipmentPhoto'
+        '400':
+          description: Missing file, invalid type, or photo limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '413':
+          description: File too large (max 5MB)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Invalid MIME type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
   /api/shipments/{id}/disputes:
     post:
       summary: Create a dispute with evidence
@@ -2101,7 +2217,7 @@ paths:
                   description: Array of shipment IDs to update (max 50)
                 status:
                   type: string
-                  enum: [CREATED, IN_TRANSIT, DELIVERED, CANCELLED]
+                  enum: [CREATED, PICKUP_CONFIRMED, IN_TRANSIT, CUSTOMS_CLEARED, OUT_FOR_DELIVERY, DELIVERED, SETTLEMENT_INITIATED, SETTLEMENT_COMPLETED, CANCELLED]
       responses:
         '200':
           description: Bulk status update completed
@@ -2352,6 +2468,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/ledger/blocks:
+    get:
+      summary: List ledger blocks
+      description: Returns a cursor-paginated list of ledger blocks, optionally filtered by shipment or event type.
+      tags:
+        - Ledger
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: shipmentId
+          in: query
+          schema:
+            type: string
+          description: Filter by shipment ObjectId
+        - name: eventType
+          in: query
+          schema:
+            $ref: '#/components/schemas/MilestoneEvent'
+          description: Filter by milestone event type
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of blocks to return
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: Cursor for the next page
+      responses:
+        '200':
+          description: Ledger blocks retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LedgerBlock'
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      hasMore:
+                        type: boolean
+                      nextCursor:
+                        type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient role
+  /api/ledger/blocks/{id}:
+    get:
+      summary: Get a ledger block by ID
+      description: Retrieves a single ledger block by its ObjectId.
+      tags:
+        - Ledger
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Ledger block ObjectId
+      responses:
+        '200':
+          description: Ledger block retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/LedgerBlock'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient role
+        '404':
+          description: Ledger block not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     ShipmentTemplateFields:
@@ -2456,7 +2672,7 @@ components:
       properties:
         status:
           type: string
-          enum: [CREATED, IN_TRANSIT, DELIVERED, CANCELLED]
+          enum: [CREATED, PICKUP_CONFIRMED, IN_TRANSIT, CUSTOMS_CLEARED, OUT_FOR_DELIVERY, DELIVERED, SETTLEMENT_INITIATED, SETTLEMENT_COMPLETED, CANCELLED]
           description: The new status of the shipment.
         milestoneData:
           type: object
@@ -2476,6 +2692,76 @@ components:
         notes:
           type: string
           description: Optional notes regarding the delivery signature.
+    UploadDocumentRequest:
+      type: object
+      required:
+        - file
+        - type
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Document file (PDF, JPG, PNG, WebP). Max 10MB.
+        type:
+          type: string
+          enum: [BILL_OF_LADING, CUSTOMS_DECLARATION, INSURANCE_CERTIFICATE, PACKING_LIST, INVOICE, OTHER]
+          description: Document classification type.
+    UploadPhotoRequest:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Photo image file (JPEG, PNG, WebP, HEIC, HEIF). Max 5MB.
+        caption:
+          type: string
+          maxLength: 500
+          description: Optional photo caption.
+    ShipmentDocument:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Storage URL of the uploaded document.
+        fileName:
+          type: string
+          description: Original file name.
+        mimeType:
+          type: string
+          description: MIME type of the uploaded file.
+        type:
+          type: string
+          enum: [BILL_OF_LADING, CUSTOMS_DECLARATION, INSURANCE_CERTIFICATE, PACKING_LIST, INVOICE, OTHER]
+          description: Document classification type.
+        size:
+          type: integer
+          description: File size in bytes.
+        uploadedAt:
+          type: string
+          format: date-time
+    ShipmentPhoto:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Storage URL of the uploaded photo.
+        fileName:
+          type: string
+          description: Original file name.
+        mimeType:
+          type: string
+          description: MIME type of the uploaded file.
+        caption:
+          type: string
+          description: Optional photo caption.
+        size:
+          type: integer
+          description: File size in bytes.
+        uploadedAt:
+          type: string
+          format: date-time
     Shipment:
       type: object
       properties:
@@ -2491,7 +2777,7 @@ components:
           type: string
         status:
           type: string
-          enum: [CREATED, IN_TRANSIT, DELIVERED, CANCELLED]
+          enum: [CREATED, PICKUP_CONFIRMED, IN_TRANSIT, CUSTOMS_CLEARED, OUT_FOR_DELIVERY, DELIVERED, SETTLEMENT_INITIATED, SETTLEMENT_COMPLETED, CANCELLED]
         milestones:
           type: array
           items:
@@ -2504,6 +2790,14 @@ components:
                 format: date-time
               description:
                 type: string
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShipmentDocument'
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShipmentPhoto'
         offChainMetadata:
           type: object
     Organization:
@@ -2569,6 +2863,7 @@ components:
         - ERR_SHIPMENT_NOT_FOUND
         - ERR_PAYMENT_NOT_FOUND
         - ERR_DUPLICATE_KEY
+        - ERR_LEDGER_BLOCK_NOT_FOUND
       description: |
         Standard error codes returned by the API. See docs/ERROR_CODES.md for details.
         - ERR_AUTH_INVALID: Invalid or missing authentication token (401)
@@ -2580,6 +2875,47 @@ components:
         - ERR_SHIPMENT_NOT_FOUND: Specific shipment not found (404)
         - ERR_PAYMENT_NOT_FOUND: Specific payment not found (404)
         - ERR_DUPLICATE_KEY: Unique constraint violation (409)
+        - ERR_LEDGER_BLOCK_NOT_FOUND: Ledger block not found (404)
+    MilestoneEvent:
+      type: string
+      enum:
+        - CREATED
+        - PICKUP_CONFIRMED
+        - IN_TRANSIT
+        - CUSTOMS_CLEARED
+        - OUT_FOR_DELIVERY
+        - DELIVERED
+        - SETTLEMENT_INITIATED
+        - SETTLEMENT_COMPLETED
+        - PROOF_SUBMITTED
+        - CANCELLED
+      description: All lifecycle events that can appear on a shipment timeline.
+    LedgerBlock:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Ledger block ObjectId
+        shipmentId:
+          type: string
+          description: Associated shipment ObjectId
+        eventType:
+          $ref: '#/components/schemas/MilestoneEvent'
+        transactionHash:
+          type: string
+          description: Stellar transaction hash, if applicable
+        actor:
+          type: string
+          description: User ObjectId who triggered the event, if applicable
+        metadata:
+          type: object
+          description: Additional event-specific metadata
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
   securitySchemes:
     stellarSignature:
       type: apiKey
