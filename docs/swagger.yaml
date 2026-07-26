@@ -2764,8 +2764,207 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /api/events/poll:
+    get:
+      summary: Poll for recent real-time events (polling fallback)
+      description: |
+        Returns an array of `RealtimeEvent` objects published after the
+        client's `since` timestamp.  Intended for clients that cannot use
+        EventSource / SSE.
+
+        **Window:** The server retains events for up to 60 seconds in a
+        Redis-backed list (capped at 500 entries).  Clients should poll
+        every 5–15 seconds and advance `since` to the `publishedAt` of the
+        last received event on each response.
+
+        Returns an empty array when no new events exist — this is the normal
+        steady-state response.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: since
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: |
+            ISO 8601 UTC timestamp.  Only events with `publishedAt` strictly
+            after this value are returned.  Defaults to 15 seconds ago when
+            omitted (useful for first-time callers).
+          example: '2026-07-26T10:00:00.000Z'
+      responses:
+        '200':
+          description: Events retrieved (may be an empty array)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Events retrieved
+                  data:
+                    type: array
+                    description: >
+                      Array of RealtimeEvent objects ordered oldest-first.
+                      Each element is a discriminated union on the `type` field.
+                    items:
+                      oneOf:
+                        - $ref: '#/components/schemas/TelemetryUpdateEvent'
+                        - $ref: '#/components/schemas/AnomalyDetectedEvent'
+                        - $ref: '#/components/schemas/StatusUpdateEvent'
+                        - $ref: '#/components/schemas/PaymentStatusChangedEvent'
+        '400':
+          description: Invalid `since` value (not a valid ISO 8601 datetime)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authorization token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Redis event store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
+    TelemetryUpdateEvent:
+      type: object
+      description: Real-time telemetry reading from an IoT sensor.
+      required: [type, publishedAt, telemetryId, shipmentId, sensorId, temperature, humidity, latitude, longitude, batteryLevel, timestamp, dataHash, anchorStatus]
+      properties:
+        type:
+          type: string
+          enum: [telemetry_update]
+        publishedAt:
+          type: integer
+          description: Epoch milliseconds when the event was pushed to the Redis store.
+        telemetryId:
+          type: string
+        shipmentId:
+          type: string
+        sensorId:
+          type: string
+        temperature:
+          type: number
+        humidity:
+          type: number
+        latitude:
+          type: number
+        longitude:
+          type: number
+        batteryLevel:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+        dataHash:
+          type: string
+        anchorStatus:
+          type: string
+          enum: [PENDING_ANCHOR, ANCHORED, ANCHOR_FAILED]
+        stellarTxHash:
+          type: string
+          nullable: true
+
+    AnomalyDetectedEvent:
+      type: object
+      description: Anomaly detected in shipment telemetry.
+      required: [type, publishedAt, anomalyId, shipmentId, type, severity, message, timestamp, resolved]
+      properties:
+        type:
+          type: string
+          enum: [anomaly_detected]
+        publishedAt:
+          type: integer
+          description: Epoch milliseconds when the event was pushed to the Redis store.
+        anomalyId:
+          type: string
+        shipmentId:
+          type: string
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        resolved:
+          type: boolean
+
+    StatusUpdateEvent:
+      type: object
+      description: Shipment status change event.
+      required: [type, publishedAt, shipmentId, status]
+      properties:
+        type:
+          type: string
+          enum: [status_update]
+        publishedAt:
+          type: integer
+          description: Epoch milliseconds when the event was pushed to the Redis store.
+        shipmentId:
+          type: string
+        status:
+          type: string
+          enum: [CREATED, IN_TRANSIT, DELIVERED, CANCELLED]
+        milestones:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+              description:
+                type: string
+                nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    PaymentStatusChangedEvent:
+      type: object
+      description: Payment status change event for a shipment.
+      required: [type, publishedAt, paymentId, shipmentId, oldStatus, newStatus, amount, timestamp]
+      properties:
+        type:
+          type: string
+          enum: [payment_status_changed]
+        publishedAt:
+          type: integer
+          description: Epoch milliseconds when the event was pushed to the Redis store.
+        paymentId:
+          type: string
+        shipmentId:
+          type: string
+        oldStatus:
+          type: string
+        newStatus:
+          type: string
+        amount:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+
     ShipmentTemplateFields:
       type: object
       properties:

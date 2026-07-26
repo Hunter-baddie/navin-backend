@@ -19,6 +19,7 @@ All error codes follow the naming convention: `ERR_<DOMAIN>_<DESCRIPTION>` or `E
 | **404** | `ERR_PAYMENT_NOT_FOUND` | Payment resource not found | `GET /api/payments/:id` | Payment ID does not exist |
 | **409** | `ERR_DUPLICATE_KEY` | Unique constraint violation | `POST /api/auth/signup`, `POST /api/users` | Email already registered, duplicate field value |
 | **500** | `ERR_INTERNAL_SERVER_ERROR` | Unhandled server error | All endpoints | Unexpected error in backend processing |
+| **502** | `ERR_EVENTS_POLL_FAILED` | Redis event store unavailable | `GET /api/events/poll` | Redis read failure during polling fallback |
 
 ## Error Response Format
 
@@ -79,6 +80,10 @@ Content-Type: application/json
 
 ### Validation Errors
 - `ERR_BAD_REQUEST` (400) — Malformed request
+- `ERR_VALIDATION_FAILED` (400) — Zod schema validation failure
+
+### Events / Real-time Errors
+- `ERR_EVENTS_POLL_FAILED` (502) — Redis event store unavailable; polling fallback could not retrieve recent events
 - `ERR_VALIDATION_FAILED` (400) — Schema validation failed
 
 ### Server Errors

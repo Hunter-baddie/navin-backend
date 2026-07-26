@@ -75,6 +75,7 @@ export const ErrorCodes = {
   INVALID_MIME_TYPE: 'ERR_INVALID_MIME_TYPE',
   INVALID_DOCUMENT_TYPE: 'ERR_INVALID_DOCUMENT_TYPE',
   PHOTO_LIMIT_EXCEEDED: 'ERR_PHOTO_LIMIT_EXCEEDED',
+  EVENTS_POLL_FAILED: 'ERR_EVENTS_POLL_FAILED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
