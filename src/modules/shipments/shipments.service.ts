@@ -596,7 +596,6 @@ export const updateShipmentStatusService = async (
         }
       }
     } catch (escrowError) {
-      console.warn(`[Shipment] Failed to trigger escrow release for ${id}:`, escrowError);
       logger.warn({ err: escrowError, shipmentId: id }, 'Failed to trigger escrow release');
       // Don't fail the shipment status update if escrow release fails
       // The payment status can be manually updated later via webhook
