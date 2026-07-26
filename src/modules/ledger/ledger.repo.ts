@@ -49,16 +49,10 @@ export async function getLedgerBlocks(filters?: {
     query._id = { $lt: new Types.ObjectId(filters.cursor) };
   }
 
-  const [data, total] = await Promise.all([
-    LedgerBlock.find(query)
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit + 1)
-      .lean(),
-    LedgerBlock.countDocuments({
-      ...(filters?.shipmentId ? { shipmentId: new Types.ObjectId(filters.shipmentId) } : {}),
-      ...(filters?.eventType ? { eventType: filters.eventType } : {}),
-    }),
-  ]);
+  const data = await LedgerBlock.find(query)
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(limit + 1)
+    .lean();
 
   return paginateCursor(data, limit);
 }

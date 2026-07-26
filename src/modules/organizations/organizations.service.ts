@@ -80,7 +80,8 @@ export async function updateOrganizationService(params: {
     if (!callerOrganizationId || organization._id.toString() !== callerOrganizationId) {
       throw new AppError(403, 'Cannot modify organization from another organization', ErrorCodes.FORBIDDEN);
     }
-    const { type, ...allowedUpdates } = updates;
+    const allowedUpdates = { ...updates };
+    delete (allowedUpdates as Record<string, unknown>).type;
     const updated = await organizationsRepo.updateOrganization(id, allowedUpdates);
     if (!updated) throw new AppError(404, 'Organization not found', ErrorCodes.ORGANIZATION_NOT_FOUND);
     return updated;

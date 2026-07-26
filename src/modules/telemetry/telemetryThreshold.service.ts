@@ -1,6 +1,5 @@
 import type { TelemetryThresholds } from '../../services/anomaly.service.js';
 import { Shipment } from '../shipments/shipments.model.js';
-import { AppError } from '../../shared/http/errors.js';
 import {
   DEFAULT_SHIPMENT_TYPE,
   DEFAULT_TELEMETRY_THRESHOLDS,
