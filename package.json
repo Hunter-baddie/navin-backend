@@ -37,6 +37,7 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "pino": "^9.14.0",
+    "rate-limit-redis": "4.2.0",
     "socket.io": "^4.8.3",
     "swagger-ui-express": "^5.0.1",
     "yamljs": "^0.3.0",
