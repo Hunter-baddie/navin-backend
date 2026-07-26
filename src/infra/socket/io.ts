@@ -13,7 +13,8 @@ import type {
   TelemetryUpdatePayload,
   AnomalyAlertPayload,
   StatusUpdatePayload,
-  PaymentStatusPayload,
+  SettlementStatusPayload,
+  NotificationPayload,
 } from '../../shared/types/socketEvents.js';
 import { logger } from '../../shared/logger/logger.js';
 
@@ -90,18 +91,52 @@ export function closeSocketIO(): Promise<void> {
   });
 }
 
-export function emitAnomalyDetected(shipmentId: string, anomaly: AnomalyAlertPayload) {
-  getIO().to(shipmentRoomName(shipmentId)).emit('anomaly_detected', anomaly);
+/**
+ * Emits `anomaly:detected` to the shipment room.
+ * @param {string} shipmentId - Target shipment room.
+ * @param {AnomalyAlertPayload} anomaly - Anomaly event payload.
+ */
+export function emitAnomalyDetected(shipmentId: string, anomaly: AnomalyAlertPayload): void {
+  getIO().to(shipmentRoomName(shipmentId)).emit('anomaly:detected', anomaly);
 }
 
-export function emitTelemetryUpdate(shipmentId: string, telemetry: TelemetryUpdatePayload) {
-  getIO().to(shipmentRoomName(shipmentId)).emit('telemetry_update', telemetry);
+/**
+ * Emits `location:update` to the shipment room.
+ * @param {string} shipmentId - Target shipment room.
+ * @param {TelemetryUpdatePayload} telemetry - Telemetry/location payload.
+ */
+export function emitTelemetryUpdate(shipmentId: string, telemetry: TelemetryUpdatePayload): void {
+  getIO().to(shipmentRoomName(shipmentId)).emit('location:update', telemetry);
 }
 
-export function emitStatusUpdate(shipmentId: string, statusData: StatusUpdatePayload) {
-  getIO().to(shipmentRoomName(shipmentId)).emit('status_update', statusData);
+/**
+ * Emits `shipment:status` to the shipment room.
+ * @param {string} shipmentId - Target shipment room.
+ * @param {StatusUpdatePayload} statusData - Status change payload.
+ */
+export function emitStatusUpdate(shipmentId: string, statusData: StatusUpdatePayload): void {
+  getIO().to(shipmentRoomName(shipmentId)).emit('shipment:status', statusData);
 }
 
-export function emitPaymentStatusChange(shipmentId: string, paymentData: PaymentStatusPayload) {
-  getIO().to(shipmentRoomName(shipmentId)).emit('payment_status_changed', paymentData);
+/**
+ * Emits `settlement:status` to the shipment room.
+ * Replaces the former `payment_status_changed` event.
+ * @param {string} shipmentId - Target shipment room.
+ * @param {SettlementStatusPayload} settlementData - Settlement status payload including optional txHash.
+ */
+export function emitPaymentStatusChange(
+  shipmentId: string,
+  settlementData: SettlementStatusPayload,
+): void {
+  getIO().to(shipmentRoomName(shipmentId)).emit('settlement:status', settlementData);
+}
+
+/**
+ * Emits `notification:new` to a user-scoped room (userId or organizationId).
+ * The caller is responsible for ensuring the recipient is in the correct room.
+ * @param {string} recipientId - userId or organizationId used as room key.
+ * @param {NotificationPayload} notification - Notification payload.
+ */
+export function emitNotificationNew(recipientId: string, notification: NotificationPayload): void {
+  getIO().to(recipientId).emit('notification:new', notification);
 }

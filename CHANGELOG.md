@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Renamed Socket.IO event `telemetry_update` → `location:update` to match frontend contract
+- Renamed Socket.IO event `anomaly_detected` → `anomaly:detected` to match frontend contract
+- Renamed Socket.IO event `status_update` → `shipment:status` to match frontend contract
+- Renamed Socket.IO event `payment_status_changed` → `settlement:status`; added `txHash` field to carry Stellar transaction hash for on-chain transitions
+- Added `emitNotificationNew()` emitter in `src/infra/socket/io.ts` for the new `notification:new` event targeted at user/organisation-scoped rooms
+- Added `SettlementStatusPayload` and `NotificationPayload` interfaces to `src/shared/types/socketEvents.ts`; deprecated `PaymentStatusPayload` alias kept for backward compatibility
+- Updated `docs/websockets.md` to document all renamed and new events with full payload schemas
+
+### Changed
+
 - Added shared `PASSWORD_MIN_LENGTH` / `PASSWORD_MIN_LENGTH_MESSAGE` constants used by all password Zod schemas
 - Added `STELLAR_WEBHOOK_SECRET` to `src/env.ts` and HMAC signature tests for `POST /api/webhooks/stellar`
 - Added `docs/PAGINATION.md` and shared helpers in `src/shared/utils/pagination.ts` documenting cursor vs offset conventions
