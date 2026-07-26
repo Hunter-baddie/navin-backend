@@ -1952,6 +1952,13 @@ paths:
   /api/shipments/{id}:
     get:
       summary: Get a single shipment by ID
+      description: >
+        Returns a single shipment wrapped in the standard API envelope
+        `{ success, message, data }`. The `data` object follows the Shipment
+        schema, including frontend-expected fields. Fields marked
+        `x-implemented: false` (originLat/Lng, destinationLat/Lng, isDelayed)
+        are documented for contract visibility but are not yet returned by
+        the API.
       security:
         - bearerAuth: []
       parameters:
@@ -3023,20 +3030,122 @@ components:
           format: date-time
     Shipment:
       type: object
+      description: >
+        Shipment resource returned by GET /api/shipments/:id (and list endpoints).
+        Includes frontend-contract fields from backend-integration-requirements.md §5.1.
+        Fields marked x-implemented: false are expected by the frontend but not yet
+        persisted on the Shipment model.
       properties:
+        _id:
+          type: string
+          description: MongoDB ObjectId of the shipment.
         trackingNumber:
           type: string
+          description: Unique tracking number for the shipment.
         origin:
           type: string
+          description: Human-readable origin address or location name.
         destination:
           type: string
+          description: Human-readable destination address or location name.
         enterpriseId:
           type: string
+          description: Organization ID of the enterprise customer.
         logisticsId:
           type: string
+          description: Organization ID of the logistics provider.
         status:
           type: string
           enum: [CREATED, PICKUP_CONFIRMED, IN_TRANSIT, CUSTOMS_CLEARED, OUT_FOR_DELIVERY, DELIVERED, SETTLEMENT_INITIATED, SETTLEMENT_COMPLETED, CANCELLED]
+          description: Current lifecycle status of the shipment.
+        priority:
+          type: string
+          enum: [URGENT, STANDARD, ECONOMY]
+          description: >
+            Shipment priority used for filtering and sorting on GET /api/shipments.
+            Implemented on the Shipment model (default STANDARD).
+          default: STANDARD
+          x-implemented: true
+        expectedDelivery:
+          type: string
+          format: date-time
+          description: >
+            Expected delivery timestamp. Implemented on the Shipment model and
+            available for sorting via sortBy=expectedDelivery.
+          x-implemented: true
+        originLat:
+          type: number
+          format: double
+          description: >
+            [TODO] Frontend-expected origin latitude. Not yet persisted on the
+            Shipment model — clients currently geocode `origin` as a fallback
+            (see backend-integration-requirements.md §5.1).
+          x-implemented: false
+        originLng:
+          type: number
+          format: double
+          description: >
+            [TODO] Frontend-expected origin longitude. Not yet persisted on the
+            Shipment model — clients currently geocode `origin` as a fallback
+            (see backend-integration-requirements.md §5.1).
+          x-implemented: false
+        destinationLat:
+          type: number
+          format: double
+          description: >
+            [TODO] Frontend-expected destination latitude. Not yet persisted on
+            the Shipment model — clients currently geocode `destination` as a
+            fallback (see backend-integration-requirements.md §5.1).
+          x-implemented: false
+        destinationLng:
+          type: number
+          format: double
+          description: >
+            [TODO] Frontend-expected destination longitude. Not yet persisted on
+            the Shipment model — clients currently geocode `destination` as a
+            fallback (see backend-integration-requirements.md §5.1).
+          x-implemented: false
+        isDelayed:
+          type: boolean
+          description: >
+            [TODO] Frontend-expected flag indicating the shipment is past its
+            expected delivery. Not yet computed or persisted on the Shipment
+            model (see backend-integration-requirements.md §5.1; related
+            analytics work tracked in #357).
+          x-implemented: false
+        stellarTokenId:
+          type: string
+          description: >
+            Stellar asset/token identifier assigned when the shipment is
+            tokenized on-chain. Set by tokenizeShipment during creation.
+          x-implemented: true
+        stellarTxHash:
+          type: string
+          description: >
+            Stellar transaction hash for the shipment tokenization (or related
+            on-chain) operation. Used for explorer links and ledger events.
+          x-implemented: true
+        deliveryProof:
+          type: object
+          nullable: true
+          description: >
+            Proof-of-delivery metadata uploaded via POST /api/shipments/:id/proof.
+            Null/omitted until proof has been submitted.
+          x-implemented: true
+          properties:
+            url:
+              type: string
+              description: URL of the uploaded proof image or document.
+            recipientSignatureName:
+              type: string
+              description: Name of the recipient who signed for delivery.
+            notes:
+              type: string
+              description: Optional notes attached to the proof upload.
+            uploadedAt:
+              type: string
+              format: date-time
+              description: When the proof was uploaded.
         milestones:
           type: array
           items:
@@ -3059,6 +3168,15 @@ components:
             $ref: '#/components/schemas/ShipmentPhoto'
         offChainMetadata:
           type: object
+          description: Optional key-value store for unstructured off-chain data.
+        createdAt:
+          type: string
+          format: date-time
+          description: Shipment creation timestamp (ISO 8601).
+        updatedAt:
+          type: string
+          format: date-time
+          description: Shipment last-update timestamp (ISO 8601).
     Organization:
       type: object
       properties:
