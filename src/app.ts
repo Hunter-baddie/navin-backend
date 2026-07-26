@@ -24,6 +24,7 @@ import { anomaliesRouter } from './modules/anomaly/anomaly.routes.js';
 import { telemetryRouter } from './modules/telemetry/telemetry.routes.js';
 import { auditLogsRouter } from './modules/audit-logs/auditLogs.routes.js';
 import { shipmentTemplatesRouter } from './modules/shipment-templates/shipment-templates.routes.js';
+import { ledgerRouter } from './modules/ledger/ledger.routes.js';
 
 const swaggerDocumentPath = fileURLToPath(new URL('../docs/swagger.yaml', import.meta.url));
 
@@ -70,6 +71,7 @@ export function buildApp() {
   app.use('/api/telemetry', telemetryRouter);
   app.use('/api/audit-logs', auditLogsRouter);
   app.use('/api/shipment-templates', shipmentTemplatesRouter);
+  app.use('/api/ledger', ledgerRouter);
 
   if (process.env.NODE_ENV !== 'production') {
     const swaggerDocument = YAML.load(swaggerDocumentPath) as Record<string, unknown>;

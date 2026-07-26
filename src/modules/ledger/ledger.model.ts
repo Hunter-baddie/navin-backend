@@ -4,9 +4,17 @@ import { MilestoneEvent } from '../../shared/types/shipment.js';
 
 export interface ILedgerBlock {
   _id: string;
+  blockNumber: number;
+  timestamp: Date;
   shipmentId: Types.ObjectId;
-  eventType: MilestoneEvent;
+  shipmentReference?: string;
+  milestoneEvent: MilestoneEvent;
   transactionHash?: string;
+  ledger: number;
+  verified: boolean;
+
+  // Backward-compatible fields
+  eventType?: MilestoneEvent;
   actor?: string;
   metadata?: Record<string, unknown>;
   deletedAt?: Date;
@@ -16,17 +24,45 @@ export interface ILedgerBlock {
 
 const LedgerBlockSchema = new Schema(
   {
+    blockNumber: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    timestamp: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
     shipmentId: {
       type: Schema.Types.ObjectId,
       ref: 'Shipment',
       required: true,
     },
-    eventType: {
+    shipmentReference: {
+      type: String,
+    },
+    milestoneEvent: {
       type: String,
       enum: Object.values(MilestoneEvent),
       required: true,
     },
+    eventType: {
+      type: String,
+      enum: Object.values(MilestoneEvent),
+      required: false,
+    },
     transactionHash: { type: String },
+    ledger: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    verified: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
     actor: { type: String },
     metadata: { type: Schema.Types.Mixed },
     deletedAt: { type: Date, default: null },
@@ -37,7 +73,7 @@ const LedgerBlockSchema = new Schema(
 LedgerBlockSchema.plugin(isoDatePlugin);
 
 // Optimizes querying ledger blocks for a specific shipment, newest first.
-LedgerBlockSchema.index({ shipmentId: 1, createdAt: -1 });
+LedgerBlockSchema.index({ shipmentId: 1, milestoneEvent: 1, createdAt: -1 });
 
 // Optimizes filtering by event type across shipments.
 LedgerBlockSchema.index({ eventType: 1, createdAt: -1 });

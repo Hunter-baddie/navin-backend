@@ -22,6 +22,7 @@ export const config = {
     port: env.SMTP_PORT,
     user: env.SMTP_USER,
     pass: env.SMTP_PASS,
+    from: env.SMTP_FROM,
   },
 
   // Twilio (SMS)
@@ -49,7 +50,5 @@ export const config = {
 
   // Frontend
   frontendUrl: env.FRONTEND_URL,
-    from: env.SMTP_FROM,
-  },
   sendgridApiKey: env.SENDGRID_API_KEY,
 } as const;

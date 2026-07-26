@@ -7,7 +7,7 @@ export const LedgerBlockIdParamSchema = z.object({
 
 export const GetLedgerBlocksQuerySchema = z.object({
   shipmentId: z.string().min(1).optional(),
-  eventType: z.nativeEnum(MilestoneEvent).optional(),
+  milestoneEvent: z.nativeEnum(MilestoneEvent).optional(),
   limit: z.coerce.number().min(1).max(100).default(20),
   cursor: z.string().optional(),
 });
