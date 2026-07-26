@@ -52,6 +52,8 @@ function milestoneNames(status: ShipmentStatus): string[] {
       return ['Order Placed', 'Picked Up', 'In Transit', 'Out for Delivery', 'Delivered'];
     case ShipmentStatus.CANCELLED:
       return ['Order Placed', 'Cancelled'];
+    default:
+      return ['Order Placed'];
   }
 }
 

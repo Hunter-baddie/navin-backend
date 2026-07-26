@@ -49,7 +49,7 @@ export interface AnomalyAlertPayload {
  */
 export interface StatusUpdatePayload {
   shipmentId: string;
-  status: 'CREATED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
+  status: string;
   milestones?: Array<{
     name: string;
     timestamp: string | Date;
