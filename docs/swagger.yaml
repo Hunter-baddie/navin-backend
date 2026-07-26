@@ -5,6 +5,13 @@ info:
   description: |
     Navin logistics/supply-chain API.
 
+    ## Authentication & roles
+    Protected endpoints use HTTP Bearer JWT (`bearerAuth`). Token claims include `userId`,
+    `role` (`SUPER_ADMIN` | `ADMIN` | `MANAGER` | `VIEWER` | `CUSTOMER`), optional
+    `organizationId` / `organizationType` (`ENTERPRISE` | `LOGISTICS`), and `jti`.
+    Backend roles differ from frontend company/customer personas (and the pending Driver role).
+    See `docs/auth-model.md` for the full role↔persona mapping and permission matrix.
+
     ## Pagination
     Use **cursor** pagination (`cursor`, `limit` → `meta.nextCursor`, `meta.hasMore`) for large
     collections (telemetry, anomalies, payments). Use **offset** pagination (`page`, `limit` →
@@ -3186,6 +3193,21 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token issued by `/api/auth/login`, `/api/auth/signup`, or `/api/auth/refresh`.
+        Send as `Authorization: Bearer <token>`.
+
+        **Claims (payload):**
+        - `userId` (string, required) — authenticated user ObjectId
+        - `role` (string, required) — one of `SUPER_ADMIN`, `ADMIN`, `MANAGER`, `VIEWER`, `CUSTOMER`
+        - `organizationId` (string, optional) — user's organization ObjectId
+        - `organizationType` (string, optional) — `ENTERPRISE` or `LOGISTICS`
+        - `jti` (string, required) — unique token id for revocation / logout
+        - `exp` / `iat` — standard JWT expiry and issued-at (7-day TTL)
+
+        Role permissions, frontend persona mapping, and the pending Driver alignment gap are
+        documented in `docs/auth-model.md`.
     apiKeyAuth:
       type: apiKey
       in: header
