@@ -162,8 +162,14 @@ export async function generateInvitationLink(input: {
   }
 
   const allowedByRole: Record<string, string[]> = {
-    [UserRole.SUPER_ADMIN]: [UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER, UserRole.CUSTOMER],
-    [UserRole.ADMIN]: [UserRole.MANAGER, UserRole.VIEWER, UserRole.CUSTOMER],
+    [UserRole.SUPER_ADMIN]: [
+      UserRole.ADMIN,
+      UserRole.MANAGER,
+      UserRole.DRIVER,
+      UserRole.VIEWER,
+      UserRole.CUSTOMER,
+    ],
+    [UserRole.ADMIN]: [UserRole.MANAGER, UserRole.DRIVER, UserRole.VIEWER, UserRole.CUSTOMER],
   };
 
   const allowedTargetRoles = allowedByRole[input.inviterRole] ?? [];
