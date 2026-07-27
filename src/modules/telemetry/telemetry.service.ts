@@ -15,6 +15,7 @@ import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import { pushStellarAnchorJob, pushAlertJob } from '../../infra/redis/queue.js';
 import logger from '../../shared/logger/logger.js';
 import { offsetSkip, paginateCursor } from '../../shared/utils/pagination.js';
+import { auditLog } from '../../shared/utils/auditLog.js';
 
 /**
  * Finds the active (IN_TRANSIT) shipment linked to a given sensorId.
@@ -86,11 +87,27 @@ export async function createTelemetryRecord(input: {
  * @returns {Promise<unknown>} Updated telemetry document.
  */
 export async function updateTelemetryAnchor(telemetryId: string, stellarTxHash: string) {
-  return Telemetry.findByIdAndUpdate(
+  const updated = await Telemetry.findByIdAndUpdate(
     telemetryId,
     { stellarTxHash, anchorStatus: TelemetryAnchorStatus.ANCHORED },
     { new: true }
   );
+
+  if (updated) {
+    auditLog({
+      userId: 'system',
+      action: 'TELEMETRY_ANCHORED',
+      resourceId: telemetryId,
+      timestamp: new Date(),
+      metadata: {
+        shipmentId: updated.shipmentId?.toString(),
+        stellarTxHash,
+        dataHash: updated.dataHash,
+      },
+    });
+  }
+
+  return updated;
 }
 
 /**

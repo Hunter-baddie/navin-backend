@@ -37,6 +37,11 @@ const EnvSchema = z.object({
   SMTP_PASS: z.string().min(1).optional(),
   SMTP_FROM: z.string().email('SMTP_FROM must be a valid email').optional(),
   SENDGRID_API_KEY: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().email('SMTP_FROM must be a valid email').optional(),
 
   // Twilio (SMS)
   TWILIO_SID: z.string().min(1).optional(),
@@ -59,6 +64,9 @@ const EnvSchema = z.object({
 
   // Frontend
   FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').default('http://localhost:3000'),
+
+  // Email API
+  SENDGRID_API_KEY: z.string().optional(),
 });
 
 const parsedEnv = EnvSchema.safeParse(process.env);
