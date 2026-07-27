@@ -40,6 +40,9 @@ describe('shipment status cache invalidation', () => {
 
     await jest.unstable_mockModule('../src/infra/socket/io.js', () => ({
       emitStatusUpdate,
+      emitPaymentStatusChange: jest.fn(),
+      emitTelemetryUpdate: jest.fn(),
+      emitAnomalyDetected: jest.fn(),
     }));
 
     await jest.unstable_mockModule('../src/modules/analytics/analytics.cache.js', () => ({

@@ -50,6 +50,16 @@ export interface AnomalyAlertPayload {
 export interface StatusUpdatePayload {
   shipmentId: string;
   status: string;
+  status:
+    | 'CREATED'
+    | 'PICKUP_CONFIRMED'
+    | 'IN_TRANSIT'
+    | 'CUSTOMS_CLEARED'
+    | 'OUT_FOR_DELIVERY'
+    | 'DELIVERED'
+    | 'SETTLEMENT_INITIATED'
+    | 'SETTLEMENT_COMPLETED'
+    | 'CANCELLED';
   milestones?: Array<{
     name: string;
     timestamp: string | Date;

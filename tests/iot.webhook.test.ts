@@ -78,6 +78,7 @@ describe('POST /api/webhooks/iot', () => {
       getIO: jest.fn(),
       emitAnomalyDetected: jest.fn(),
       emitTelemetryUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
       emitStatusUpdate: jest.fn(),
     }));
 
