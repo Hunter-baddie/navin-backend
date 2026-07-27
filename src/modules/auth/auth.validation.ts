@@ -57,8 +57,25 @@ export const RefreshBodySchema = z.object({
   token: z.string().min(1),
 });
 
+/**
+ * Body schema for `POST /api/auth/register/company`.
+ *
+ * Business domain: self-service company registration creating both an Organization
+ * (type: ENTERPRISE) and its first admin user in a single call.
+ */
+export const RegisterCompanyBodySchema = z.object({
+  companyName: z.string().min(1, 'Company name is required'),
+  industry: z.string().min(1, 'Industry is required'),
+  country: z.string().min(1, 'Country is required'),
+  companySize: z.string().min(1, 'Company size is required'),
+  adminName: z.string().min(1, 'Admin name is required'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE),
+});
+
 export type SignupInput = z.infer<typeof SignupBodySchema>;
 export type LoginInput = z.infer<typeof LoginBodySchema>;
 export type ForgotPasswordInput = z.infer<typeof ForgotPasswordBodySchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordBodySchema>;
 export type RefreshInput = z.infer<typeof RefreshBodySchema>;
+export type RegisterCompanyInput = z.infer<typeof RegisterCompanyBodySchema>;

@@ -7,7 +7,7 @@ import { config } from '../../config/index.js';
 import { OrganizationType } from '../../shared/constants/index.js';
 import { UserModel, OrganizationModel, UserRole } from '../users/users.model.js';
 import { blockToken, isTokenBlocked } from '../../infra/redis/tokenBlocklist.js';
-import type { SignupInput, LoginInput } from './auth.validation.js';
+import type { SignupInput, LoginInput, RegisterCompanyInput } from './auth.validation.js';
 import { logger } from '../../shared/logger/logger.js';
 import { sendEmail, resetPasswordEmailHtml } from '../../services/email.service.js';
 
@@ -290,5 +290,104 @@ export async function resetPassword(token: string, newPassword: string): Promise
   if (payload.jti) {
     const ttl = payload.exp ? payload.exp - Math.floor(Date.now() / 1000) : RESET_TOKEN_TTL_SECONDS;
     if (ttl > 0) await blockToken(payload.jti, ttl);
+  }
+}
+
+/**
+ * Self-service company registration: creates both an Organization (type: ENTERPRISE)
+ * and the first admin user in a single atomic operation.
+ * 
+ * @param {RegisterCompanyInput} input - Company and admin user details.
+ * @returns {Promise<{user: {id: string; email: string; name: string; role: string}; token: string}>} The created admin user and JWT token.
+ * @throws {AppError} 409 if email or organization name already exists.
+ * @throws {AppError} 400 for validation failures.
+ */
+export async function registerCompany(input: {
+  companyName: string;
+  industry: string;
+  country: string;
+  companySize: string;
+  adminName: string;
+  email: string;
+  password: string;
+}) {
+  // Start a MongoDB session for transaction
+  const session = await UserModel.startSession();
+  session.startTransaction();
+
+  try {
+    // Check if email already exists
+    const existingUser = await UserModel.findOne({ email: input.email });
+    if (existingUser) {
+      throw new AppError(409, 'Email already in use', 'EMAIL_TAKEN');
+    }
+
+    // Check if organization name already exists
+    const existingOrg = await OrganizationModel.findOne({ name: input.companyName });
+    if (existingOrg) {
+      throw new AppError(409, 'Organization name already exists', 'DUPLICATE_KEY');
+    }
+
+    // Create organization with settings
+    const organization = await OrganizationModel.create(
+      [
+        {
+          name: input.companyName,
+          type: OrganizationType.ENTERPRISE,
+          settings: {
+            industry: input.industry,
+            country: input.country,
+            companySize: input.companySize,
+          },
+        },
+      ],
+      { session }
+    );
+
+    const orgId = organization[0]._id;
+
+    // Create admin user with password hash
+    const hashedPassword = await bcrypt.hash(input.password, 10);
+    const user = await UserModel.create(
+      [
+        {
+          email: input.email,
+          name: input.adminName,
+          passwordHash: hashedPassword,
+          role: UserRole.ADMIN,
+          organizationId: orgId,
+        },
+      ],
+      { session }
+    );
+
+    // Commit transaction
+    await session.commitTransaction();
+
+    const createdUser = user[0];
+
+    // Generate JWT token with organization context
+    const token = generateToken({
+      userId: createdUser._id.toString(),
+      role: UserRole.ADMIN,
+      persona: derivePersona(UserRole.ADMIN, OrganizationType.ENTERPRISE),
+      organizationId: orgId.toString(),
+      organizationType: OrganizationType.ENTERPRISE,
+    });
+
+    return {
+      user: {
+        id: createdUser._id,
+        email: createdUser.email,
+        name: createdUser.name,
+        role: createdUser.role,
+      },
+      token,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    await session.endSession();
   }
 }
