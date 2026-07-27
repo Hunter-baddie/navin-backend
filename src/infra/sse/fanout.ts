@@ -72,7 +72,10 @@ function mapShipmentStatus(status: StatusUpdatePayload['status']): ShipmentStatu
   if (status === 'CREATED') {
     return 'PENDING';
   }
-  return status;
+  if (status === 'IN_TRANSIT') return 'IN_TRANSIT';
+  if (status === 'DELIVERED' || status === 'SETTLEMENT_COMPLETED') return 'DELIVERED';
+  if (status === 'CANCELLED') return 'CANCELLED';
+  return 'IN_TRANSIT';
 }
 
 /**
@@ -120,12 +123,16 @@ export async function fanoutAnomalyDetected(
   shipmentId: string,
   anomaly: AnomalyAlertPayload
 ): Promise<void> {
-  await fanoutToShipmentUsers(shipmentId, () => ({
-    type: 'anomaly:detected',
+  await fanoutToShipmentUsers(
     shipmentId,
-    anomalyType: anomaly.type,
-    severity: anomaly.severity,
-  } satisfies AnomalyDetectedRealtimeEvent));
+    () =>
+      ({
+        type: 'anomaly:detected',
+        shipmentId,
+        anomalyType: anomaly.type,
+        severity: anomaly.severity,
+      }) satisfies AnomalyDetectedRealtimeEvent
+  );
 }
 
 /**
@@ -135,13 +142,17 @@ export async function fanoutLocationUpdate(
   shipmentId: string,
   telemetry: TelemetryUpdatePayload
 ): Promise<void> {
-  await fanoutToShipmentUsers(shipmentId, () => ({
-    type: 'location:update',
+  await fanoutToShipmentUsers(
     shipmentId,
-    lat: telemetry.latitude,
-    lng: telemetry.longitude,
-    timestamp: telemetry.timestamp,
-  } satisfies LocationUpdateRealtimeEvent));
+    () =>
+      ({
+        type: 'location:update',
+        shipmentId,
+        lat: telemetry.latitude,
+        lng: telemetry.longitude,
+        timestamp: telemetry.timestamp,
+      }) satisfies LocationUpdateRealtimeEvent
+  );
 }
 
 /**
@@ -151,12 +162,16 @@ export async function fanoutSettlementStatus(
   shipmentId: string,
   payment: PaymentStatusPayload & { stellarTxHash?: string }
 ): Promise<void> {
-  await fanoutToShipmentUsers(shipmentId, () => ({
-    type: 'settlement:status',
-    settlementId: payment.paymentId,
-    newStatus: payment.newStatus,
-    txHash: payment.stellarTxHash,
-  } satisfies SettlementStatusRealtimeEvent));
+  await fanoutToShipmentUsers(
+    shipmentId,
+    () =>
+      ({
+        type: 'settlement:status',
+        settlementId: payment.paymentId,
+        newStatus: payment.newStatus,
+        txHash: payment.stellarTxHash,
+      }) satisfies SettlementStatusRealtimeEvent
+  );
 }
 
 /**

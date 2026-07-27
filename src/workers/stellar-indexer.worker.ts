@@ -36,7 +36,7 @@ function toMilestoneEvent(memo?: string): MilestoneEvent {
 
 export async function indexStellarTransactions(
   client: StellarIndexerClient,
-  minConfirmations: number = DEFAULT_CONFIRMATIONS,
+  minConfirmations: number = DEFAULT_CONFIRMATIONS
 ): Promise<{ processed: number; upserted: number; verified: number }> {
   const payments = await PaymentModel.find({ stellarTxHash: { $exists: true, $ne: null } })
     .select('_id shipmentId stellarTxHash')
@@ -73,7 +73,7 @@ export async function indexStellarTransactions(
       { transactionHash: tx.hash },
       {
         $setOnInsert: {
-          shipmentId: (payment as { shipmentId: string }).shipmentId,
+          shipmentId: String((payment as { shipmentId: unknown }).shipmentId),
           eventType: toMilestoneEvent(tx.memo),
           transactionHash: tx.hash,
           actor: 'stellar-indexer',
@@ -89,7 +89,7 @@ export async function indexStellarTransactions(
           },
         },
       },
-      { upsert: true },
+      { upsert: true }
     );
 
     if ((result as { upsertedCount?: number }).upsertedCount) {
@@ -102,7 +102,7 @@ export async function indexStellarTransactions(
 
 async function processIndexerJob(
   _job: Job,
-  client: StellarIndexerClient,
+  client: StellarIndexerClient
 ): Promise<{ processed: number; upserted: number; verified: number }> {
   const summary = await indexStellarTransactions(client);
   logger.info(summary, 'Stellar indexer polling cycle complete');
@@ -123,17 +123,13 @@ export async function startStellarIndexerWorker(client: StellarIndexerClient): P
       backoff: { type: 'exponential', delay: 5_000 },
       removeOnComplete: 100,
       removeOnFail: 100,
-    },
+    }
   );
 
-  const worker = new Worker(
-    STELLAR_INDEXER_QUEUE,
-    async job => processIndexerJob(job, client),
-    {
-      connection: getBullMQConnection(),
-      concurrency: 1,
-    },
-  );
+  const worker = new Worker(STELLAR_INDEXER_QUEUE, async job => processIndexerJob(job, client), {
+    connection: getBullMQConnection(),
+    concurrency: 1,
+  });
 
   worker.on('failed', (job, err) => {
     logger.error({ jobId: job?.id, err }, 'Stellar indexer job failed');
