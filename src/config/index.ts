@@ -15,6 +15,7 @@ export const config = {
   redisUrl: env.REDIS_URL,
   corsOrigin: env.CORS_ORIGIN,
 
+  // Frontend / email
   // Frontend
   frontendUrl: env.FRONTEND_URL,
 

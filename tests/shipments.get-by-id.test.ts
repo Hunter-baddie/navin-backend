@@ -80,6 +80,7 @@ await jest.unstable_mockModule('../src/infra/socket/io.js', () => ({
   emitStatusUpdate: jest.fn(),
   emitAnomalyDetected: jest.fn(),
   emitTelemetryUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
   initSocketIO: jest.fn(),
   getIO: jest.fn(),
 }));

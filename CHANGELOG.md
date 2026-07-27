@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Documented the telemetry ingestion pipeline as a Mermaid sequence diagram in `docs/telemetry-pipeline.md`, including BullMQ queue names (`transaction_queue`, `alert_queue`) and the 25/80 vs legacy 85/90 threshold note (#396)
+- Expanded Swagger schemas for `POST /api/webhooks/iot` (union payload + 202 response) and `POST /api/webhooks/stellar` (#396)
 - `GET /api/activity` — new activity feed endpoint accessible to ADMIN, MANAGER, and VIEWER roles with `before`-based ISO date pagination and `meta: { limit, total, hasMore, before }` envelope
 - Expanded `AuditAction` type with 7 new variants: `SHIPMENT_CREATED`, `PROOF_UPLOADED`, `TELEMETRY_ANCHORED`, `SETTLEMENT_RELEASED`, `ANOMALY_DETECTED`, `USER_INVITED`, `DISPUTE_OPENED`
 - `SHIPMENT_CREATED` audit log written from `createShipmentService` when a shipment is created
@@ -55,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Repaired merge-corrupted `src/config/index.ts` and duplicate keys in `src/env.ts` so `npm run build` succeeds (#396)
 - Restored missing `organizationsRouter` import in `buildApp` and repaired broken `auth.controller` / Swagger YAML so pagination and search suites can boot
 - Confirmed telemetry pagination and battery-threshold anomaly tests assert auth + `data` array envelope correctly
 

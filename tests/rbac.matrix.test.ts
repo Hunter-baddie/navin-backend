@@ -185,6 +185,7 @@ describe('RBAC Matrix Integration Tests', () => {
 
     await jest.unstable_mockModule('../src/infra/socket/io.js', () => ({
       emitTelemetryUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
       emitAnomalyDetected: jest.fn(),
       emitStatusUpdate: jest.fn(),
       emitPaymentStatusChange: jest.fn(),

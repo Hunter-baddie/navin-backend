@@ -77,6 +77,7 @@ export async function getLedgerBlocks(filters?: {
     }),
   ]);
 
+  return { ...paginateCursor(data, limit), total };
   const page = paginateCursor(data, limit);
   return {
     data: page.data,
