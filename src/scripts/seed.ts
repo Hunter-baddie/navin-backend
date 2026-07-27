@@ -57,9 +57,6 @@ function milestoneNames(status: ShipmentStatus): string[] {
     case ShipmentStatus.DELIVERED:
       return ['Order Placed', 'Picked Up', 'In Transit', 'Out for Delivery', 'Delivered'];
     case ShipmentStatus.SETTLEMENT_INITIATED:
-      return ['Order Placed', 'Picked Up', 'In Transit', 'Out for Delivery', 'Delivered', 'Settlement Initiated'];
-    case ShipmentStatus.SETTLEMENT_COMPLETED:
-      return ['Order Placed', 'Picked Up', 'In Transit', 'Out for Delivery', 'Delivered', 'Settlement Completed'];
       return [
         'Order Placed',
         'Picked Up',
@@ -67,6 +64,14 @@ function milestoneNames(status: ShipmentStatus): string[] {
         'Out for Delivery',
         'Delivered',
         'Settlement Initiated',
+      ];
+    case ShipmentStatus.SETTLEMENT_COMPLETED:
+      return [
+        'Order Placed',
+        'Picked Up',
+        'In Transit',
+        'Out for Delivery',
+        'Delivered',
         'Settlement Completed',
       ];
     case ShipmentStatus.CANCELLED:

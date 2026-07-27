@@ -60,9 +60,7 @@ export async function getActivityService(params: GetActivityParams): Promise<Get
 
   // next `before` value is the timestamp of the oldest item in this page
   const nextBefore =
-    hasMore && data.length > 0
-      ? (data[data.length - 1].timestamp as Date).toISOString()
-      : null;
+    hasMore && data.length > 0 ? (data[data.length - 1].timestamp as Date).toISOString() : null;
 
   return {
     data: data as IAuditLog[],
