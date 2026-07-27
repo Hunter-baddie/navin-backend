@@ -13,6 +13,7 @@ All error codes follow the naming convention: `ERR_<DOMAIN>_<DESCRIPTION>` or `E
 | **400** | `ERR_BAD_REQUEST` | Invalid request syntax or parameters | All endpoints | Malformed JSON body, invalid query parameters |
 | **400** | `ERR_VALIDATION_FAILED` | Request validation failed (Zod schema) | All endpoints | Missing required fields, invalid field types, constraints violated |
 | **401** | `ERR_AUTH_INVALID` | Missing or invalid authentication token | All protected endpoints | Missing `Authorization` header, malformed JWT, expired token |
+| **401** | `ERR_AUTH_TOKEN_REVOKED` | JWT has been explicitly revoked | All protected endpoints, `GET /api/events` | User logged out; token blocklisted in Redis before natural expiry |
 | **403** | `ERR_PERMISSION_DENIED` | Insufficient role permissions | All role-restricted endpoints | User role not authorized for this endpoint |
 | **404** | `ERR_NOT_FOUND` | Resource not found | `GET /api/*/:id`, `PATCH /api/*/:id`, `DELETE /api/*/:id` | Resource ID does not exist or has been deleted |
 | **404** | `ERR_SHIPMENT_NOT_FOUND` | Shipment resource not found | `GET /api/shipments/:id`, `PATCH /api/shipments/:id` | Shipment ID does not exist |
@@ -69,6 +70,7 @@ Content-Type: application/json
 
 ### Authentication Errors
 - `ERR_AUTH_INVALID` (401) — Invalid or missing JWT token
+- `ERR_AUTH_TOKEN_REVOKED` (401) — JWT revoked (user logged out; Redis blocklist hit)
 - `ERR_PERMISSION_DENIED` (403) — User lacks required role
 
 ### Resource Errors
@@ -91,6 +93,7 @@ Error codes are defined in `src/shared/http/errors.ts`:
 ```typescript
 export const ErrorCodes = {
   UNAUTHORIZED: 'ERR_AUTH_INVALID',
+  TOKEN_REVOKED: 'ERR_AUTH_TOKEN_REVOKED',
   FORBIDDEN: 'ERR_PERMISSION_DENIED',
   NOT_FOUND: 'ERR_NOT_FOUND',
   BAD_REQUEST: 'ERR_BAD_REQUEST',
@@ -116,6 +119,10 @@ client.interceptors.response.use(
   error => {
     if (error.response?.data?.code === 'ERR_AUTH_INVALID') {
       // Handle authentication error
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+    } else if (error.response?.data?.code === 'ERR_AUTH_TOKEN_REVOKED') {
+      // Token was explicitly revoked (e.g. user logged out on another tab/device)
       localStorage.removeItem('authToken');
       window.location.href = '/login';
     } else if (error.response?.data?.code === 'ERR_PERMISSION_DENIED') {
@@ -168,6 +175,9 @@ A: No. Always check the `code` field for precise error type identification, as m
 A: No. Error messages are currently English only. Frontend teams should map error codes to localized messages.
 
 ## Changelog
+
+### Version 1.1.0
+- Added `ERR_AUTH_TOKEN_REVOKED` (401) — revoked JWT error for SSE and all protected endpoints
 
 ### Version 1.0.0
 - Initial registry with 9 core error codes

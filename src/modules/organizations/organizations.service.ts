@@ -49,7 +49,11 @@ export async function getOrganizationService(params: {
 
   if (callerRole === UserRole.ADMIN) {
     if (!callerOrganizationId || organization._id.toString() !== callerOrganizationId) {
-      throw new AppError(403, 'Cannot access organization from another organization', ErrorCodes.FORBIDDEN);
+      throw new AppError(
+        403,
+        'Cannot access organization from another organization',
+        ErrorCodes.FORBIDDEN
+      );
     }
     return organization;
   }
@@ -72,17 +76,24 @@ export async function updateOrganizationService(params: {
 
   if (callerRole === UserRole.SUPER_ADMIN) {
     const updated = await organizationsRepo.updateOrganization(id, updates);
-    if (!updated) throw new AppError(404, 'Organization not found', ErrorCodes.ORGANIZATION_NOT_FOUND);
+    if (!updated)
+      throw new AppError(404, 'Organization not found', ErrorCodes.ORGANIZATION_NOT_FOUND);
     return updated;
   }
 
   if (callerRole === UserRole.ADMIN) {
     if (!callerOrganizationId || organization._id.toString() !== callerOrganizationId) {
-      throw new AppError(403, 'Cannot modify organization from another organization', ErrorCodes.FORBIDDEN);
+      throw new AppError(
+        403,
+        'Cannot modify organization from another organization',
+        ErrorCodes.FORBIDDEN
+      );
     }
-    const { type, ...allowedUpdates } = updates;
+    const allowedUpdates = { ...updates };
+    delete (allowedUpdates as Record<string, unknown>).type;
     const updated = await organizationsRepo.updateOrganization(id, allowedUpdates);
-    if (!updated) throw new AppError(404, 'Organization not found', ErrorCodes.ORGANIZATION_NOT_FOUND);
+    if (!updated)
+      throw new AppError(404, 'Organization not found', ErrorCodes.ORGANIZATION_NOT_FOUND);
     return updated;
   }
 
@@ -105,6 +116,7 @@ export async function deleteOrganizationService(params: {
   }
 
   const deleted = await organizationsRepo.deleteOrganization(id);
-  if (!deleted) throw new AppError(404, 'Organization not found', ErrorCodes.ORGANIZATION_NOT_FOUND);
+  if (!deleted)
+    throw new AppError(404, 'Organization not found', ErrorCodes.ORGANIZATION_NOT_FOUND);
   return deleted;
 }

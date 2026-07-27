@@ -42,6 +42,7 @@ jest.unstable_mockModule('../src/modules/users/users.model.js', () => ({
     SUPER_ADMIN: 'SUPER_ADMIN',
     ADMIN: 'ADMIN',
     MANAGER: 'MANAGER',
+    DRIVER: 'DRIVER',
     VIEWER: 'VIEWER',
     CUSTOMER: 'CUSTOMER',
   },
@@ -58,6 +59,7 @@ const { requireAuth } = await import('../src/shared/middleware/requireAuth.js');
 type TokenPayload = {
   userId: string;
   role: string;
+  persona: 'company' | 'customer';
   organizationId?: string;
   organizationType?: OrganizationType;
 };
@@ -216,6 +218,36 @@ describe('Auth Service', () => {
       const decoded = jwt.verify(result.token, env.JWT_SECRET) as TokenPayload;
       expect(decoded.organizationType).toBe(OrganizationType.LOGISTICS);
       expect(decoded.organizationId).toBe('org-id-123');
+      expect(decoded.persona).toBe('company');
+    });
+
+    it('should include customer persona when organization type is enterprise', async () => {
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      const mockUser: UserDoc = {
+        _id: { toString: () => 'user-id-123' },
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'VIEWER',
+        organizationId: { toString: () => 'org-id-123' },
+        passwordHash: hashedPassword,
+      };
+
+      const mockOrg: OrganizationDoc = {
+        _id: { toString: () => 'org-id-123' },
+        name: 'Test Enterprise',
+        type: OrganizationType.ENTERPRISE,
+      };
+
+      mockFindOne.mockResolvedValue(mockUser);
+      mockOrgFindById.mockResolvedValue(mockOrg);
+
+      const result = await login({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
+      const decoded = jwt.verify(result.token, env.JWT_SECRET) as TokenPayload;
+      expect(decoded.persona).toBe('customer');
     });
 
     it('should handle missing organization gracefully', async () => {

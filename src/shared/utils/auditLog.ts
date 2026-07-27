@@ -2,7 +2,17 @@ import { logger } from '../logger/logger.js';
 import { AuditLog } from '../../modules/audit-logs/auditLogs.model.js';
 import { isValidObjectId } from 'mongoose';
 
-export type AuditAction = 'SHIPMENT_STATUS_CHANGED' | 'RBAC_ROLE_MODIFIED' | 'API_KEY_GENERATED';
+export type AuditAction =
+  | 'SHIPMENT_STATUS_CHANGED'
+  | 'SHIPMENT_CREATED'
+  | 'PROOF_UPLOADED'
+  | 'TELEMETRY_ANCHORED'
+  | 'SETTLEMENT_RELEASED'
+  | 'ANOMALY_DETECTED'
+  | 'USER_INVITED'
+  | 'DISPUTE_OPENED'
+  | 'RBAC_ROLE_MODIFIED'
+  | 'API_KEY_GENERATED';
 
 export interface AuditLogParams {
   userId: string;
@@ -14,8 +24,29 @@ export interface AuditLogParams {
 }
 
 function inferResource(action: AuditAction): string {
-  if (action === 'SHIPMENT_STATUS_CHANGED') {
+  if (
+    action === 'SHIPMENT_STATUS_CHANGED' ||
+    action === 'SHIPMENT_CREATED' ||
+    action === 'PROOF_UPLOADED' ||
+    action === 'DISPUTE_OPENED'
+  ) {
     return 'SHIPMENT';
+  }
+
+  if (action === 'TELEMETRY_ANCHORED') {
+    return 'TELEMETRY';
+  }
+
+  if (action === 'SETTLEMENT_RELEASED') {
+    return 'PAYMENT';
+  }
+
+  if (action === 'ANOMALY_DETECTED') {
+    return 'ANOMALY';
+  }
+
+  if (action === 'USER_INVITED') {
+    return 'USER';
   }
 
   if (action === 'API_KEY_GENERATED') {
