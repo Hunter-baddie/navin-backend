@@ -22,9 +22,10 @@ import { webhooksRouter } from './modules/webhooks/iot.routes.js';
 import { analyticsRouter } from './modules/analytics/analytics.routes.js';
 import { anomaliesRouter } from './modules/anomaly/anomaly.routes.js';
 import { telemetryRouter } from './modules/telemetry/telemetry.routes.js';
-import { auditLogsRouter } from './modules/audit-logs/auditLogs.routes.js';
+import { auditLogsRouter, activityRouter } from './modules/audit-logs/auditLogs.routes.js';
 import { shipmentTemplatesRouter } from './modules/shipment-templates/shipment-templates.routes.js';
 import { ledgerRouter } from './modules/ledger/ledger.routes.js';
+import { eventsRouter } from './modules/events/events.routes.js';
 
 const swaggerDocumentPath = fileURLToPath(new URL('../docs/swagger.yaml', import.meta.url));
 
@@ -70,8 +71,10 @@ export function buildApp() {
   app.use('/api/anomalies', anomaliesRouter);
   app.use('/api/telemetry', telemetryRouter);
   app.use('/api/audit-logs', auditLogsRouter);
+  app.use('/api/activity', activityRouter);
   app.use('/api/shipment-templates', shipmentTemplatesRouter);
   app.use('/api/ledger', ledgerRouter);
+  app.use('/api/events', eventsRouter);
 
   if (process.env.NODE_ENV !== 'production') {
     const swaggerDocument = YAML.load(swaggerDocumentPath) as Record<string, unknown>;
