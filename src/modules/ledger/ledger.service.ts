@@ -15,7 +15,7 @@ export async function createLedgerBlockService(input: LedgerBlockInput) {
 
 export async function getLedgerBlocksService(params: {
   shipmentId?: string;
-  eventType?: MilestoneEvent;
+  milestoneEvent?: MilestoneEvent;
   limit: number;
   cursor?: string;
 }) {

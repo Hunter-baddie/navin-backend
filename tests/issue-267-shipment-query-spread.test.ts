@@ -48,6 +48,7 @@ await jest.unstable_mockModule('../src/modules/users/users.model.js', () => ({
 
 await jest.unstable_mockModule('../src/infra/socket/io.js', () => ({
   emitStatusUpdate: jest.fn(),
+  emitPaymentStatusChange: jest.fn(),
 }));
 
 await jest.unstable_mockModule('../src/services/stellar.service.js', () => ({
@@ -61,7 +62,10 @@ await jest.unstable_mockModule('../src/modules/ledger/ledger.service.js', () => 
 
 const { getShipmentsService } = await import('../src/modules/shipments/shipments.service.js');
 const shipmentsModel = await import('../src/modules/shipments/shipments.model.js');
-const ShipmentMock = shipmentsModel.Shipment as unknown as { find: jest.Mock; countDocuments: jest.Mock };
+const ShipmentMock = shipmentsModel.Shipment as unknown as {
+  find: jest.Mock<(...args: unknown[]) => unknown>;
+  countDocuments: jest.Mock<(...args: unknown[]) => Promise<number>>;
+};
 
 describe('Issue #267: No ...filters spread into MongoDB query', () => {
   beforeEach(() => {
