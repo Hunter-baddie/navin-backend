@@ -57,9 +57,9 @@ socket.on('room_left', payload => {
 
 ## Events emitted by the server
 
-### `telemetry_update`
+### `location:update`
 
-Emitted when new telemetry arrives for a shipment.
+Emitted when new telemetry arrives for a shipment (replaces the former `telemetry_update` event).
 
 Payload schema:
 
@@ -80,9 +80,9 @@ interface TelemetryUpdatePayload {
 }
 ```
 
-### `anomaly_detected`
+### `anomaly:detected`
 
-Emitted when the backend detects an anomaly in shipment telemetry.
+Emitted when the backend detects an anomaly in shipment telemetry (replaces the former `anomaly_detected` event).
 
 Payload schema:
 
@@ -103,9 +103,9 @@ interface AnomalyAlertPayload {
 }
 ```
 
-### `status_update`
+### `shipment:status`
 
-Emitted when a shipment status changes.
+Emitted when a shipment status changes (replaces the former `status_update` event).
 
 Payload schema:
 
@@ -124,19 +124,22 @@ interface StatusUpdatePayload {
 }
 ```
 
-### `payment_status_changed`
+### `settlement:status`
 
-Emitted when `updatePaymentStatusService` successfully updates a payment (for example `Pending` → `Escrowed` or `Released`). Only sockets joined to the shipment room for `shipmentId` receive the event.
+Emitted when `updatePaymentStatusService` or `disputeSettlementService` transitions a payment/escrow record. Only sockets joined to the shipment room for `shipmentId` receive the event. Replaces the former `payment_status_changed` event.
+
+`txHash` is included when the status transition involves an on-chain Stellar transaction (e.g. escrow release).
 
 Payload schema:
 
 ```ts
-interface PaymentStatusPayload {
+interface SettlementStatusPayload {
   paymentId: string;
   shipmentId: string;
   oldStatus: string;
   newStatus: string;
   amount: number;
+  txHash?: string; // Stellar tx hash — present for on-chain transitions
   timestamp: string; // ISO 8601 UTC
 }
 ```
@@ -150,7 +153,30 @@ Example:
   "oldStatus": "Pending",
   "newStatus": "Released",
   "amount": 1500,
+  "txHash": "a3b8c1...",
   "timestamp": "2026-07-24T21:00:00.000Z"
+}
+```
+
+### `notification:new`
+
+Emitted directly to a user or organisation room (not a shipment room). Use this event for user-scoped notifications such as anomaly alerts, milestone updates, and system messages.
+
+The emitter `emitNotificationNew(recipientId, payload)` in `src/infra/socket/io.ts` targets the room keyed by `recipientId` (a userId or organizationId). Clients must join that room explicitly.
+
+Payload schema:
+
+```ts
+interface NotificationPayload {
+  notificationId: string;
+  recipientId: string;   // userId or organizationId
+  type: string;          // e.g. 'ANOMALY_ALERT' | 'MILESTONE' | 'SYSTEM'
+  title: string;
+  body: string;
+  referenceId?: string;  // shipmentId, paymentId, etc.
+  referenceType?: string; // e.g. 'SHIPMENT' | 'PAYMENT'
+  timestamp: string;     // ISO 8601 UTC
+  read: boolean;
 }
 ```
 
@@ -204,4 +230,5 @@ Payload example:
 - The Socket.IO flow is implemented in `src/infra/socket/io.ts`.
 - Room management helper logic is in `src/infra/socket/shipmentRooms.ts`.
 - Payload schemas are defined in `src/shared/types/socketEvents.ts`.
-- Payment status updates emit `payment_status_changed` from `updatePaymentStatusService` in `src/modules/payments/payments.service.ts`.
+- Settlement status updates emit `settlement:status` from `updatePaymentStatusService` and `disputeSettlementService` in `src/modules/payments/payments.service.ts`.
+- `notification:new` is emitted via `emitNotificationNew()` and targets recipient-scoped rooms.

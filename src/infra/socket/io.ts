@@ -13,7 +13,8 @@ import type {
   TelemetryUpdatePayload,
   AnomalyAlertPayload,
   StatusUpdatePayload,
-  PaymentStatusPayload,
+  SettlementStatusPayload,
+  NotificationPayload,
 } from '../../shared/types/socketEvents.js';
 import {
   fanoutAnomalyDetected,
@@ -97,6 +98,54 @@ export function closeSocketIO(): Promise<void> {
   });
 }
 
+/**
+ * Emits `anomaly:detected` to the shipment room.
+ * @param {string} shipmentId - Target shipment room.
+ * @param {AnomalyAlertPayload} anomaly - Anomaly event payload.
+ */
+export function emitAnomalyDetected(shipmentId: string, anomaly: AnomalyAlertPayload): void {
+  getIO().to(shipmentRoomName(shipmentId)).emit('anomaly:detected', anomaly);
+}
+
+/**
+ * Emits `location:update` to the shipment room.
+ * @param {string} shipmentId - Target shipment room.
+ * @param {TelemetryUpdatePayload} telemetry - Telemetry/location payload.
+ */
+export function emitTelemetryUpdate(shipmentId: string, telemetry: TelemetryUpdatePayload): void {
+  getIO().to(shipmentRoomName(shipmentId)).emit('location:update', telemetry);
+}
+
+/**
+ * Emits `shipment:status` to the shipment room.
+ * @param {string} shipmentId - Target shipment room.
+ * @param {StatusUpdatePayload} statusData - Status change payload.
+ */
+export function emitStatusUpdate(shipmentId: string, statusData: StatusUpdatePayload): void {
+  getIO().to(shipmentRoomName(shipmentId)).emit('shipment:status', statusData);
+}
+
+/**
+ * Emits `settlement:status` to the shipment room.
+ * Replaces the former `payment_status_changed` event.
+ * @param {string} shipmentId - Target shipment room.
+ * @param {SettlementStatusPayload} settlementData - Settlement status payload including optional txHash.
+ */
+export function emitPaymentStatusChange(
+  shipmentId: string,
+  settlementData: SettlementStatusPayload,
+): void {
+  getIO().to(shipmentRoomName(shipmentId)).emit('settlement:status', settlementData);
+}
+
+/**
+ * Emits `notification:new` to a user-scoped room (userId or organizationId).
+ * The caller is responsible for ensuring the recipient is in the correct room.
+ * @param {string} recipientId - userId or organizationId used as room key.
+ * @param {NotificationPayload} notification - Notification payload.
+ */
+export function emitNotificationNew(recipientId: string, notification: NotificationPayload): void {
+  getIO().to(recipientId).emit('notification:new', notification);
 export function emitAnomalyDetected(shipmentId: string, anomaly: AnomalyAlertPayload) {
   getIO().to(shipmentRoomName(shipmentId)).emit('anomaly_detected', anomaly);
   void safeFanout('anomaly:detected', shipmentId, () =>

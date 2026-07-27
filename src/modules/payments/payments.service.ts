@@ -9,6 +9,7 @@ import type {
 } from './payments.validation.js';
 import { getStellarExplorerUrl } from '../../services/stellar.service.js';
 import { emitPaymentStatusChange } from '../../infra/socket/io.js';
+import type { SettlementStatusPayload } from '../../shared/types/socketEvents.js';
 import { auditLog } from '../../shared/utils/auditLog.js';
 
 function augmentPayment(payment: IPayment): IPayment & { explorerUrl?: string } {
@@ -105,14 +106,16 @@ export async function updatePaymentStatusService(id: string, input: UpdatePaymen
     throw new AppError(500, 'Failed to update payment status', ErrorCodes.INTERNAL_ERROR);
   }
 
-  emitPaymentStatusChange(updated.shipmentId.toString(), {
+  const settlementPayload: SettlementStatusPayload = {
     paymentId: updated._id.toString(),
     shipmentId: updated.shipmentId.toString(),
     oldStatus,
     newStatus: updated.status,
     amount: updated.amount,
+    ...(updated.stellarTxHash && { txHash: updated.stellarTxHash }),
     timestamp: new Date().toISOString(),
-  });
+  };
+  emitPaymentStatusChange(updated.shipmentId.toString(), settlementPayload);
 
   return augmentPayment(updated);
 }
@@ -173,14 +176,16 @@ export async function disputeSettlementService(id: string, input: DisputeSettlem
     throw new AppError(500, 'Failed to dispute settlement', ErrorCodes.INTERNAL_ERROR);
   }
 
-  emitPaymentStatusChange(updated.shipmentId.toString(), {
+  const settlementPayload: SettlementStatusPayload = {
     paymentId: updated._id.toString(),
     shipmentId: updated.shipmentId.toString(),
     oldStatus: payment.status,
     newStatus: updated.status,
     amount: updated.amount,
+    ...(updated.stellarTxHash && { txHash: updated.stellarTxHash }),
     timestamp: new Date().toISOString(),
-  });
+  };
+  emitPaymentStatusChange(updated.shipmentId.toString(), settlementPayload);
 
   return augmentPayment(updated);
 }
