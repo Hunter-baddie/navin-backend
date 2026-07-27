@@ -4,10 +4,20 @@ import type { ActivityQuery, AuditLogsQuery } from './auditLogs.validation.js';
 import { getActivityService, getAuditLogsService } from './auditLogs.service.js';
 
 /**
- * GET /api/activity
- * Returns a paginated activity feed accessible to ADMIN, MANAGER, and VIEWER roles.
+ * Returns a paginated activity feed for the organization.
+ * Route: `GET /api/activity`. Requires auth and ADMIN / MANAGER / VIEWER.
  * Pagination is before-based: pass `before` as an ISO 8601 date string to fetch
  * events older than that timestamp.
+ *
+ * @param req.query.before - Optional ISO timestamp; return events older than this.
+ * @param req.query.limit - Page size (default 20).
+ * @param req.query.userId - Optional actor user filter.
+ * @param req.query.action - Optional action filter.
+ * @param req.query.resource - Optional resource filter.
+ * @returns HTTP 200 with envelope `{ success, message, data, meta }` (`limit`, `total`, `hasMore`, `before`).
+ * @throws {AppError} 401 ERR_AUTH_INVALID — when JWT auth fails.
+ * @throws {AppError} 403 ERR_PERMISSION_DENIED — when the caller lacks ADMIN / MANAGER / VIEWER.
+ * @throws {AppError} 400 VALIDATION_ERROR — when query validation fails.
  */
 export const getActivity = async (req: Request, res: Response) => {
   const query = req.query as unknown as ActivityQuery;
@@ -29,8 +39,21 @@ export const getActivity = async (req: Request, res: Response) => {
 };
 
 /**
- * GET /api/audit-logs  (legacy — ADMIN / SUPER_ADMIN only)
- * Retained for backward compatibility. Prefer /api/activity for new integrations.
+ * Lists audit log entries with optional filters and cursor pagination.
+ * Route: `GET /api/audit-logs` (legacy — ADMIN / SUPER_ADMIN only).
+ * Prefer `/api/activity` for new integrations.
+ *
+ * @param req.query.cursor - Optional cursor for the next page.
+ * @param req.query.limit - Page size (default 20, max 100).
+ * @param req.query.userId - Optional actor user filter.
+ * @param req.query.action - Optional action filter.
+ * @param req.query.resource - Optional resource filter.
+ * @param req.query.from - Optional start of time window.
+ * @param req.query.to - Optional end of time window.
+ * @returns HTTP 200 with envelope `{ success, message, data, meta }` (`nextCursor`, `hasMore`, `total`).
+ * @throws {AppError} 401 ERR_AUTH_INVALID — when JWT auth fails.
+ * @throws {AppError} 403 ERR_PERMISSION_DENIED — when the caller lacks SUPER_ADMIN / ADMIN.
+ * @throws {AppError} 400 VALIDATION_ERROR — when query validation fails.
  */
 export const getAuditLogs = async (req: Request, res: Response) => {
   const query = req.query as unknown as AuditLogsQuery;
