@@ -3,20 +3,68 @@ info:
   title: Navin Backend API
   version: 1.0.0
   description: |
-    Navin logistics/supply-chain API.
+    Navin Backend is the logistics / supply-chain HTTP API for shipment lifecycle management,
+    IoT telemetry ingest and anomaly detection, Stellar-backed settlements/payments, and
+    organization administration.
 
-    ## Authentication & roles
-    Protected endpoints use HTTP Bearer JWT (`bearerAuth`). Token claims include `userId`,
+    ## Authentication
+    ### JWT Bearer (`bearerAuth`)
+    Most protected endpoints require `Authorization: Bearer <JWT>`. Tokens are issued by
+    `/api/auth/login`, `/api/auth/signup`, or `/api/auth/refresh`. Claims include `userId`,
     `role` (`SUPER_ADMIN` | `ADMIN` | `MANAGER` | `VIEWER` | `CUSTOMER`), optional
-    `organizationId` / `organizationType` (`ENTERPRISE` | `LOGISTICS`), and `jti`.
-    Backend roles differ from frontend company/customer personas (and the pending Driver role).
-    See `docs/auth-model.md` for the full role↔persona mapping and permission matrix.
+    `organizationId` / `organizationType` (`ENTERPRISE` | `LOGISTICS`), and `jti` (used for
+    logout / revocation). Role permissions and frontend persona mapping are documented in
+    `docs/auth-model.md`.
+
+    ### API key (`apiKeyAuth`)
+    Machine / IoT clients authenticate with the `x-api-key` header on selected webhook
+    endpoints (notably `POST /api/webhooks/iot`). API keys are managed under `/api/auth/api-keys`
+    by ADMIN / SUPER_ADMIN users.
+
+    ### Stellar webhook signature (`stellarSignature`)
+    `POST /api/webhooks/stellar` requires an HMAC-SHA256 digest in `x-stellar-signature`,
+    computed over the raw body with `STELLAR_WEBHOOK_SECRET`.
+
+    ## Response envelope
+    Successful JSON handlers use a standard envelope via `sendResponse`:
+
+    ```json
+    {
+      "success": true,
+      "message": "...",
+      "data": { },
+      "meta": { }
+    }
+    ```
+
+    `meta` is optional and holds pagination cursors / totals. A few endpoints intentionally
+    diverge (for example shipment CSV/JSON export and SSE event streams).
 
     ## Pagination
     Use **cursor** pagination (`cursor`, `limit` → `meta.nextCursor`, `meta.hasMore`) for large
-    collections (telemetry, anomalies, payments). Use **offset** pagination (`page`, `limit` →
-    `meta.page`, `meta.limit`, `meta.total`) for bounded admin lists (shipments).
-    Pagination fields always live in `meta`, never in `data`. See `docs/PAGINATION.md`.
+    collections (telemetry, anomalies, payments/settlements, audit logs, users). Use **offset**
+    pagination (`page`, `limit` → `meta.page`, `meta.limit`, `meta.total`) for bounded admin
+    lists (shipments). Telemetry additionally accepts legacy `page` for dashboard clients, but
+    `cursor` and `page` must not be combined. Pagination fields always live in `meta`, never in
+    `data`. See `docs/PAGINATION.md`.
+
+    ## Error handling
+    Errors return JSON with `success: false`, a human-readable `message`, `data: null`, and an
+    `error.code` string (plus optional `details` for validation failures). Common HTTP statuses
+    include 400 (validation / bad request), 401 (missing or invalid credentials), 403
+    (insufficient role), 404 (resource not found), and 409 (conflict such as duplicate email).
+  contact:
+    name: Navin Backend Maintainers
+    url: https://github.com/Navin-xmr/navin-backend
+servers:
+  - url: http://localhost:3000
+    description: Local development server (default PORT=3000)
+  - url: https://{productionHost}
+    description: Production API host (placeholder — set productionHost to your deployed API base URL; no canonical production URL is published in this repository)
+    variables:
+      productionHost:
+        default: api.example.com
+        description: Replace with the real production API hostname when deploying
 x-rate-limit:
   standard:
     limit: 100
