@@ -15,14 +15,19 @@ export const config = {
   redisUrl: env.REDIS_URL,
   corsOrigin: env.CORS_ORIGIN,
 
-  // SMTP (email)
+  // Frontend / email
+  // Frontend
   frontendUrl: env.FRONTEND_URL,
+
+  // SMTP (email)
   smtp: {
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
     user: env.SMTP_USER,
     pass: env.SMTP_PASS,
+    from: env.SMTP_FROM,
   },
+  sendgridApiKey: env.SENDGRID_API_KEY,
 
   // Twilio (SMS)
   twilio: {
@@ -49,7 +54,5 @@ export const config = {
 
   // Frontend
   frontendUrl: env.FRONTEND_URL,
-    from: env.SMTP_FROM,
-  },
   sendgridApiKey: env.SENDGRID_API_KEY,
 } as const;

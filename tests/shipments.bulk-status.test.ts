@@ -99,6 +99,7 @@ await jest.unstable_mockModule('../src/infra/socket/io.js', () => ({
   initSocketIO: jest.fn(),
   getIO: jest.fn(),
   emitStatusUpdate: jest.fn(),
+  emitPaymentStatusChange: jest.fn(),
 }));
 
 await jest.unstable_mockModule('../src/modules/analytics/analytics.cache.js', () => ({

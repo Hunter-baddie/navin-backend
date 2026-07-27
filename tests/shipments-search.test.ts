@@ -115,6 +115,7 @@ await jest.unstable_mockModule('../src/infra/socket/io.js', () => ({
   emitStatusUpdate: jest.fn(),
   emitAnomalyDetected: jest.fn(),
   emitTelemetryUpdate: jest.fn(),
+  emitPaymentStatusChange: jest.fn(),
   initSocketIO: jest.fn(),
   getIO: jest.fn(),
 }));
@@ -147,6 +148,7 @@ await jest.unstable_mockModule('../src/shared/middleware/rateLimiter.js', () => 
   standardLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
   strictLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
   loginLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
+  otpLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 await jest.unstable_mockModule('../src/infra/mongo/connection.js', () => ({

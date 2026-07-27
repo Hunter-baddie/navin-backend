@@ -1,4 +1,4 @@
-﻿import { describe, expect, beforeEach, it, jest } from '@jest/globals';
+import { describe, expect, beforeEach, it, jest } from '@jest/globals';
 import { Telemetry } from '../src/modules/telemetry/telemetry.model.js';
 
 /**
@@ -116,6 +116,7 @@ describe('getTelemetry controller bug fixes', () => {
         getIO: jest.fn(),
         emitAnomalyDetected: jest.fn(),
         emitTelemetryUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
         emitStatusUpdate: jest.fn(),
       }));
 
@@ -187,6 +188,7 @@ describe('getTelemetry controller bug fixes', () => {
         getIO: jest.fn(),
         emitAnomalyDetected: jest.fn(),
         emitTelemetryUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
         emitStatusUpdate: jest.fn(),
       }));
 
@@ -274,6 +276,7 @@ describe('GET /api/telemetry/thresholds', () => {
       getIO: jest.fn(),
       emitAnomalyDetected: jest.fn(),
       emitTelemetryUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
       emitStatusUpdate: jest.fn(),
     }));
 
