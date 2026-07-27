@@ -1702,6 +1702,11 @@ paths:
             maximum: 100
             default: 20
           description: Maximum number of records to return.
+        - in: query
+          name: organizationId
+          schema:
+            type: string
+          description: Optional organization filter (validated by GetPaymentsQuerySchema).
       responses:
         '200':
           description: Payments retrieved successfully
@@ -1742,6 +1747,199 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Insufficient role permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a payment / settlement
+      description: |
+        Creates a settlement record tied to a shipment. Both `/api/payments` and
+        `/api/settlements` share this router. Requires JWT auth and ADMIN or SUPER_ADMIN.
+        Provide `token` (preferred) or legacy `tokenType` (`XLMN` | `USDC` | `Other`).
+      security:
+        - bearerAuth: []
+      x-required-role: [ADMIN, SUPER_ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - shipmentId
+                - amount
+              properties:
+                shipmentId:
+                  type: string
+                  minLength: 1
+                  description: MongoDB ObjectId of the related shipment.
+                amount:
+                  type: number
+                  minimum: 0
+                  exclusiveMinimum: true
+                  description: Positive settlement amount.
+                token:
+                  type: string
+                  enum: [XLMN, USDC, Other]
+                  description: Preferred on-chain asset field.
+                tokenType:
+                  type: string
+                  enum: [XLMN, USDC, Other]
+                  description: Deprecated alias for token (backward compatibility).
+                payerAddress:
+                  type: string
+                payeeAddress:
+                  type: string
+                status:
+                  type: string
+                  enum: [Pending, Escrowed, Released, Failed, Disputed]
+                  default: Pending
+      responses:
+        '201':
+          description: Payment created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: Payment created successfully
+                  data:
+                    $ref: '#/components/schemas/Settlement'
+        '400':
+          description: Validation error (e.g. missing token/tokenType, non-positive amount)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authorization token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient role permissions (ADMIN / SUPER_ADMIN required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/{id}:
+    get:
+      summary: Get payment / settlement by ID
+      description: |
+        Returns a single settlement (same handler as `GET /api/settlements/{id}`).
+        Requires JWT authentication. No additional role gate beyond `requireAuth`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: Payment / settlement ObjectId.
+      responses:
+        '200':
+          description: Settlement retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: Settlement retrieved successfully
+                  data:
+                    $ref: '#/components/schemas/Settlement'
+        '401':
+          description: Missing or invalid authorization token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Settlement not found (`ERR_PAYMENT_NOT_FOUND`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/{id}/status:
+    patch:
+      summary: Update payment / settlement status
+      description: |
+        Advances settlement lifecycle status and optionally records `stellarTxHash`.
+        Requires JWT auth and ADMIN or SUPER_ADMIN.
+      security:
+        - bearerAuth: []
+      x-required-role: [ADMIN, SUPER_ADMIN]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: Payment / settlement ObjectId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [Pending, Escrowed, Released, Failed, Disputed]
+                stellarTxHash:
+                  type: string
+                  description: Optional on-chain transaction hash for audit.
+      responses:
+        '200':
+          description: Payment status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: Payment status updated successfully
+                  data:
+                    $ref: '#/components/schemas/Settlement'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authorization token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient role permissions (ADMIN / SUPER_ADMIN required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payment not found (`ERR_PAYMENT_NOT_FOUND`)
           content:
             application/json:
               schema:
@@ -2071,6 +2269,101 @@ paths:
                         type: boolean
                       page:
                         type: integer
+  /api/telemetry/bulk:
+    post:
+      summary: Bulk ingest telemetry readings
+      description: |
+        Authenticated batch ingest of sensor readings (JWT). Batch size is 1–1000 items
+        (`BulkTelemetryBodySchema`). Unlike `POST /api/webhooks/iot` (API key), this path
+        requires Bearer auth and has no additional role gate beyond `requireAuth`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  items:
+                    type: object
+                    required:
+                      - shipmentId
+                      - temperature
+                      - humidity
+                      - latitude
+                      - longitude
+                      - batteryLevel
+                      - timestamp
+                    properties:
+                      shipmentId:
+                        type: string
+                        minLength: 1
+                      temperature:
+                        type: number
+                        minimum: -50
+                        maximum: 100
+                      humidity:
+                        type: number
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+                      batteryLevel:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      timestamp:
+                        type: string
+                        format: date-time
+                      sensorId:
+                        type: string
+      responses:
+        '201':
+          description: Bulk telemetry ingested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: Bulk telemetry ingested
+                  data:
+                    type: object
+                    properties:
+                      insertedCount:
+                        type: integer
+                      insertedIds:
+                        type: array
+                        items:
+                          type: string
+        '400':
+          description: Validation error or bad request (`ERR_BAD_REQUEST` / `VALIDATION_ERROR`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authorization token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Related shipment/sensor not found (`ERR_NOT_FOUND`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/organizations:
      post:
        summary: Create an organization
@@ -2382,21 +2675,22 @@ paths:
   /api/shipments/{id}:
     get:
       summary: Get a single shipment by ID
-      description: >
+      description: |
         Returns a single shipment wrapped in the standard API envelope
-        `{ success, message, data }`. The `data` object follows the Shipment
-        schema, including frontend-expected fields. Fields marked
-        `x-implemented: false` (originLat/Lng, destinationLat/Lng, isDelayed)
-        are documented for contract visibility but are not yet returned by
-        the API.
+        `{ success, message, data }`. Requires JWT and one of
+        SUPER_ADMIN / ADMIN / MANAGER / VIEWER. Non–super-admin callers are
+        limited to shipments in their organization.
       security:
         - bearerAuth: []
+      x-required-role: [SUPER_ADMIN, ADMIN, MANAGER, VIEWER]
       parameters:
         - in: path
           name: id
           required: true
           schema:
             type: string
+            minLength: 1
+          description: Shipment ObjectId.
       responses:
         '200':
           description: Shipment retrieved successfully
@@ -2411,12 +2705,30 @@ paths:
                     type: string
                   data:
                     $ref: '#/components/schemas/Shipment'
+        '400':
+          description: Invalid path parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Forbidden — insufficient role or organization access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Shipment not found
+          description: Shipment not found (`ERR_SHIPMENT_NOT_FOUND`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     patch:
       summary: Update off-chain metadata
       security:
@@ -2957,21 +3269,71 @@ paths:
   /api/telemetry/thresholds:
     get:
       summary: Get organization telemetry anomaly thresholds
+      description: |
+        Returns effective anomaly thresholds for the caller's organization
+        (`{ shipmentType, thresholds }`). Optional `shipmentType` selects a
+        category profile; otherwise DEFAULT is used. Requires JWT and
+        SUPER_ADMIN / ADMIN / MANAGER / VIEWER. Callers without `organizationId`
+        receive 403.
       security:
         - bearerAuth: []
+      x-required-role: [SUPER_ADMIN, ADMIN, MANAGER, VIEWER]
       parameters:
         - in: query
           name: shipmentType
           schema:
             type: string
+            minLength: 1
           description: Shipment category key (defaults to DEFAULT)
       responses:
         '200':
           description: Threshold configuration retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: Telemetry thresholds retrieved
+                  data:
+                    type: object
+                    properties:
+                      shipmentType:
+                        type: string
+                      thresholds:
+                        type: object
+                        properties:
+                          maxTemp:
+                            type: number
+                          minTemp:
+                            type: number
+                          maxHumidity:
+                            type: number
+                          minHumidity:
+                            type: number
+                          minBatteryLevel:
+                            type: number
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Forbidden
+          description: Forbidden — insufficient role or missing organization context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       summary: Update organization telemetry anomaly thresholds
       security:
