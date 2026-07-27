@@ -2204,7 +2204,18 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/shipments/{id}/timeline:
     get:
+      tags:
+        - Shipments
       summary: Get unified shipment activity timeline
+      description: |
+        Returns a cursor-paginated, chronologically sorted activity timeline for a shipment.
+        Events are aggregated from milestones, delivery proof, anchored telemetry, and anomalies.
+
+        Query contract mirrors `ShipmentTimelineQuerySchema`:
+        - `cursor` (optional opaque string from a previous `meta.nextCursor`)
+        - `limit` (1–100, default 20)
+
+        Response envelope: `{ success, message, data: ShipmentTimelineEvent[], meta: { nextCursor, hasMore } }`.
       security:
         - bearerAuth: []
       parameters:
@@ -2213,24 +2224,68 @@ paths:
           required: true
           schema:
             type: string
+          description: Shipment ObjectId
         - in: query
           name: cursor
+          required: false
           schema:
             type: string
+          description: Opaque cursor from a previous page (`timestamp|suffix`)
         - in: query
           name: limit
+          required: false
           schema:
             type: integer
+            minimum: 1
+            maximum: 100
             default: 20
+          description: Maximum number of timeline events to return
       responses:
         '200':
           description: Chronological shipment events
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message, data, meta]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: Shipment timeline retrieved
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShipmentTimelineEvent'
+                  meta:
+                    type: object
+                    required: [nextCursor, hasMore]
+                    properties:
+                      nextCursor:
+                        type: string
+                        nullable: true
+                        description: Cursor for the next page, or null when hasMore is false
+                      hasMore:
+                        type: boolean
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Shipment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/shipments/{id}/proof:
     post:
       summary: Upload proof of delivery for a shipment
@@ -3864,6 +3919,34 @@ components:
         - ERR_PAYMENT_NOT_FOUND: Specific payment not found (404)
         - ERR_DUPLICATE_KEY: Unique constraint violation (409)
         - ERR_LEDGER_BLOCK_NOT_FOUND: Ledger block not found (404)
+
+    ShipmentTimelineEventType:
+      type: string
+      description: Event kinds emitted by GET /api/shipments/{id}/timeline
+      enum:
+        - STATUS_CHANGE
+        - TELEMETRY_ANCHORED
+        - ANOMALY_DETECTED
+        - PROOF_UPLOADED
+    ShipmentTimelineEvent:
+      type: object
+      required: [type, timestamp, description, metadata]
+      description: |
+        Unified timeline event after aggregation. Internal cursor keys are stripped
+        before the response; pagination uses `meta.nextCursor` / `meta.hasMore`.
+      properties:
+        type:
+          $ref: '#/components/schemas/ShipmentTimelineEventType'
+        timestamp:
+          type: string
+          format: date-time
+          description: Event time in ISO-8601 UTC
+        description:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Source-specific fields (status, telemetryId, stellarTxHash, proof URL, etc.)
     MilestoneEvent:
       type: string
       enum:
