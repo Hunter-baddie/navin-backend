@@ -31,10 +31,11 @@ const EnvSchema = z.object({
   CORS_ORIGIN: z.string().default('*'),
 
   // SMTP (email)
-  SMTP_HOST: z.string().min(1).optional(),
-  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587).optional(),
-  SMTP_USER: z.string().min(1).optional(),
-  SMTP_PASS: z.string().min(1).optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().email('SMTP_FROM must be a valid email').optional(),
 
   // Twilio (SMS)
   TWILIO_SID: z.string().min(1).optional(),
@@ -56,13 +57,9 @@ const EnvSchema = z.object({
   SENTRY_DSN: z.string().url('SENTRY_DSN must be a valid URL').optional(),
 
   // Frontend
-  FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').optional(),
   FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').default('http://localhost:3000'),
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().email('SMTP_FROM must be a valid email').optional(),
+
+  // Email API
   SENDGRID_API_KEY: z.string().optional(),
 });
 

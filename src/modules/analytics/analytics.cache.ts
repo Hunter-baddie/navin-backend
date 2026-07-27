@@ -25,7 +25,11 @@ function getCacheClient(): RedisLike | null {
   }
 }
 
-export function analyticsPerformanceCacheKey(startDateIso: string, endDateIso: string, granularity: string): string {
+export function analyticsPerformanceCacheKey(
+  startDateIso: string,
+  endDateIso: string,
+  granularity: string
+): string {
   return `${ANALYTICS_CACHE_PREFIX}${startDateIso}:${endDateIso}:${granularity}`;
 }
 
