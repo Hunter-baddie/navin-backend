@@ -50,5 +50,7 @@ export const config = {
   // Observability
   sentryDsn: env.SENTRY_DSN,
 
+  // Frontend
+  frontendUrl: env.FRONTEND_URL,
   sendgridApiKey: env.SENDGRID_API_KEY,
 } as const;

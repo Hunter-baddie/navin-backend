@@ -4,8 +4,8 @@ import { randomUUID } from 'crypto';
 import { AppError } from '../../shared/http/errors.js';
 import { env } from '../../env.js';
 import { config } from '../../config/index.js';
+import { OrganizationType } from '../../shared/constants/index.js';
 import { UserModel, OrganizationModel, UserRole } from '../users/users.model.js';
-import type { OrganizationType } from '../../shared/types/user.js';
 import { blockToken, isTokenBlocked } from '../../infra/redis/tokenBlocklist.js';
 import type { SignupInput, LoginInput } from './auth.validation.js';
 import { logger } from '../../shared/logger/logger.js';
@@ -14,6 +14,7 @@ import { sendEmail, resetPasswordEmailHtml } from '../../services/email.service.
 export interface TokenPayload {
   userId: string;
   role: string;
+  persona?: 'company' | 'customer';
   organizationId?: string;
   organizationType?: OrganizationType;
   jti: string;
@@ -33,6 +34,14 @@ function generateToken(payload: Omit<TokenPayload, 'jti'>): string {
  */
 function determineUserRole(_email: string): UserRole {
   return UserRole.VIEWER;
+}
+
+function derivePersona(role: string, organizationType?: OrganizationType): 'company' | 'customer' {
+  if (role === UserRole.CUSTOMER || organizationType === OrganizationType.ENTERPRISE) {
+    return 'customer';
+  }
+
+  return 'company';
 }
 
 /**
@@ -67,6 +76,7 @@ export async function signup(input: SignupInput) {
   const token = generateToken({
     userId: user._id.toString(),
     role: user.role as string,
+    persona: derivePersona(user.role as string, organizationType),
     organizationId: user.organizationId?.toString(),
     organizationType,
   });
@@ -108,6 +118,7 @@ export async function login(input: LoginInput) {
   const token = generateToken({
     userId: user._id.toString(),
     role: user.role as string,
+    persona: derivePersona(user.role as string, organizationType),
     organizationId: user.organizationId?.toString(),
     organizationType,
   });
@@ -184,6 +195,7 @@ export async function refreshToken(token: string): Promise<{ token: string; expi
   const newToken = generateToken({
     userId: user._id.toString(),
     role: user.role as string,
+    persona: derivePersona(user.role as string, organizationType),
     organizationId: user.organizationId?.toString(),
     organizationType,
   });
