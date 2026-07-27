@@ -16,7 +16,10 @@ export const config = {
   corsOrigin: env.CORS_ORIGIN,
 
   // Frontend / email
+  // Frontend
   frontendUrl: env.FRONTEND_URL,
+
+  // SMTP (email)
   smtp: {
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
@@ -48,4 +51,8 @@ export const config = {
 
   // Observability
   sentryDsn: env.SENTRY_DSN,
+
+  // Frontend
+  frontendUrl: env.FRONTEND_URL,
+  sendgridApiKey: env.SENDGRID_API_KEY,
 } as const;

@@ -79,11 +79,7 @@ export async function anchorTelemetryHash(telemetryData: {
   }
 
   if (!telemetryData.dataHash || typeof telemetryData.dataHash !== 'string') {
-    throw new AppError(
-      400,
-      'dataHash must be a non-empty string',
-      ErrorCodes.STELLAR_INVALID_HASH
-    );
+    throw new AppError(400, 'dataHash must be a non-empty string', ErrorCodes.STELLAR_INVALID_HASH);
   }
 
   const keypair = Keypair.fromSecret(secretKey);
