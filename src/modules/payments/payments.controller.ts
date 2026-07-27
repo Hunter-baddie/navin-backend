@@ -72,10 +72,7 @@ export const disputeSettlementController = asyncHandler(
 export const getSettlementSummaryController = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const period = (req.query as Record<string, string>).period ?? 'week';
-    const summary = await getSettlementSummaryService(
-      req.user?.organizationId ?? '',
-      period
-    );
+    const summary = await getSettlementSummaryService(req.user?.organizationId ?? '', period);
     sendResponse(res, 200, true, 'Settlement summary retrieved successfully', summary);
   }
 );
