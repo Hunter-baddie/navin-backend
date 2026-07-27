@@ -4,6 +4,7 @@ import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import { evaluateTelemetry } from '../../services/anomaly.service.js';
 import { paginateCursor } from '../../shared/utils/pagination.js';
 import { resolveTelemetryThresholdsForShipment } from '../telemetry/telemetryThreshold.service.js';
+import { auditLog } from '../../shared/utils/auditLog.js';
 
 interface TelemetryData {
   _id: string;
@@ -73,6 +74,21 @@ export async function detectAnomaly(data: TelemetryData): Promise<AnomalyResult>
       resolved: obj.resolved,
     };
   });
+
+  for (const anomaly of anomalies) {
+    auditLog({
+      userId: 'system',
+      action: 'ANOMALY_DETECTED',
+      resourceId: anomaly._id,
+      timestamp: new Date(anomaly.timestamp),
+      metadata: {
+        shipmentId: anomaly.shipmentId,
+        type: anomaly.type,
+        severity: anomaly.severity,
+        message: anomaly.message,
+      },
+    });
+  }
 
   return { detected: true, anomalies };
 }

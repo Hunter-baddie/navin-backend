@@ -14,6 +14,7 @@ import { config } from '../../config/index.js';
 import { UserRole } from '../../shared/constants/index.js';
 import { sendEmail, invitationEmailHtml } from '../../services/email.service.js';
 import { logger } from '../../shared/logger/logger.js';
+import { auditLog } from '../../shared/utils/auditLog.js';
 
 /**
  * Creates a new user account under the caller's organization.
@@ -196,6 +197,18 @@ export async function generateInvitationLink(input: {
   } catch (err) {
     logger.error({ err, email: input.email }, 'Failed to send invitation email');
   }
+
+  auditLog({
+    userId: input.inviterUserId,
+    action: 'USER_INVITED',
+    resourceId: input.inviterUserId,
+    timestamp: new Date(),
+    metadata: {
+      invitedEmail: input.email,
+      role: input.role,
+      organizationId: input.organizationId,
+    },
+  });
 
   return { token, inviteLink, expiresInSeconds: INVITE_EXPIRY_SECONDS };
 }
