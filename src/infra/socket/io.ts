@@ -16,6 +16,13 @@ import type {
   SettlementStatusPayload,
   NotificationPayload,
 } from '../../shared/types/socketEvents.js';
+import {
+  fanoutAnomalyDetected,
+  fanoutLocationUpdate,
+  fanoutSettlementStatus,
+  fanoutStatusUpdate,
+  safeFanout,
+} from '../sse/fanout.js';
 import { logger } from '../../shared/logger/logger.js';
 
 let io: Server | null = null;
@@ -139,4 +146,30 @@ export function emitPaymentStatusChange(
  */
 export function emitNotificationNew(recipientId: string, notification: NotificationPayload): void {
   getIO().to(recipientId).emit('notification:new', notification);
+export function emitAnomalyDetected(shipmentId: string, anomaly: AnomalyAlertPayload) {
+  getIO().to(shipmentRoomName(shipmentId)).emit('anomaly_detected', anomaly);
+  void safeFanout('anomaly:detected', shipmentId, () =>
+    fanoutAnomalyDetected(shipmentId, anomaly)
+  );
+}
+
+export function emitTelemetryUpdate(shipmentId: string, telemetry: TelemetryUpdatePayload) {
+  getIO().to(shipmentRoomName(shipmentId)).emit('telemetry_update', telemetry);
+  void safeFanout('location:update', shipmentId, () =>
+    fanoutLocationUpdate(shipmentId, telemetry)
+  );
+}
+
+export function emitStatusUpdate(shipmentId: string, statusData: StatusUpdatePayload) {
+  getIO().to(shipmentRoomName(shipmentId)).emit('status_update', statusData);
+  void safeFanout('shipment:status', shipmentId, () =>
+    fanoutStatusUpdate(shipmentId, statusData)
+  );
+}
+
+export function emitPaymentStatusChange(shipmentId: string, paymentData: PaymentStatusPayload) {
+  getIO().to(shipmentRoomName(shipmentId)).emit('payment_status_changed', paymentData);
+  void safeFanout('settlement:status', shipmentId, () =>
+    fanoutSettlementStatus(shipmentId, paymentData)
+  );
 }

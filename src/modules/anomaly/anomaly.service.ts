@@ -2,9 +2,9 @@ import { Anomaly } from './anomaly.model.js';
 import type { FilterQuery } from 'mongoose';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import { evaluateTelemetry } from '../../services/anomaly.service.js';
-import { getRedisClient } from '../../infra/redis/connection.js';
 import { paginateCursor } from '../../shared/utils/pagination.js';
 import { resolveTelemetryThresholdsForShipment } from '../telemetry/telemetryThreshold.service.js';
+import { auditLog } from '../../shared/utils/auditLog.js';
 
 interface TelemetryData {
   _id: string;
@@ -75,6 +75,21 @@ export async function detectAnomaly(data: TelemetryData): Promise<AnomalyResult>
     };
   });
 
+  for (const anomaly of anomalies) {
+    auditLog({
+      userId: 'system',
+      action: 'ANOMALY_DETECTED',
+      resourceId: anomaly._id,
+      timestamp: new Date(anomaly.timestamp),
+      metadata: {
+        shipmentId: anomaly.shipmentId,
+        type: anomaly.type,
+        severity: anomaly.severity,
+        message: anomaly.message,
+      },
+    });
+  }
+
   return { detected: true, anomalies };
 }
 
@@ -135,9 +150,6 @@ export async function resolveAnomalyService(id: string, resolvedBy: string, note
   return anomaly;
 }
 
-const ANOMALY_STATS_KEY = 'anomaly:stats';
-const ANOMALY_STATS_TTL = 300; // 5 minutes
-
 /**
  * Returns aggregated anomaly statistics for dashboard widgets.
  * Results are cached in Redis for 5 minutes.
@@ -155,7 +167,7 @@ export async function getAnomalyStatsService(organizationId?: string) {
       return JSON.parse(cached);
     }
   } catch {
-    client = null;
+    // cache read failure is non-fatal; proceed without cache
   }
 
   const matchStage: Record<string, unknown> = { deletedAt: null };
@@ -174,10 +186,7 @@ export async function getAnomalyStatsService(organizationId?: string) {
           { $match: { resolved: false } },
           { $group: { _id: '$severity', count: { $sum: 1 } } },
         ],
-        byType: [
-          { $match: { resolved: false } },
-          { $group: { _id: '$type', count: { $sum: 1 } } },
-        ],
+        byType: [{ $match: { resolved: false } }, { $group: { _id: '$type', count: { $sum: 1 } } }],
       },
     },
   ]);

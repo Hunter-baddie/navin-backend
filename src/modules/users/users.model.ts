@@ -1,8 +1,7 @@
-import { OrganizationType } from '../../shared/types/user.js';
 import { UserRole } from '../../shared/constants/index.js';
 import { isoDatePlugin } from '../../shared/plugins/isoDatePlugin.js';
 import mongoose from 'mongoose';
-import { IUser, IOrganization } from '../../shared/types/user.js';
+import { IUser } from '../../shared/types/user.js';
 
 // Re-export OrganizationModel and OrganizationType from organizations module for backward compatibility
 export { OrganizationType } from '../../shared/types/user.js';
