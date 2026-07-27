@@ -141,6 +141,8 @@ describe('Real-time Socket.io Events', () => {
       emitAnomalyDetected: mockEmitAnomalyDetected,
       emitTelemetryUpdate: mockEmitTelemetryUpdate,
       emitStatusUpdate: mockEmitStatusUpdate,
+   emitPaymentStatusChange: jest.fn(),
+    emitPaymentStatusChange: jest.fn(),
     }));
 
     await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', () => ({
