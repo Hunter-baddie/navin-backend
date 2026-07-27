@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Created `docs/DATABASE.md` documenting plugin architecture, index optimization strategies, and schema conventions (#309)
 - Created `src/shared/plugins/softDeletePlugin.ts` as a reusable Mongoose plugin for soft deletion (#309)
 - Added regression test for resolving a non-existent anomaly (#299).
+- `GET /api/events/poll` — polling fallback endpoint returning `RealtimeEvent[]` from a Redis-backed recent-events list (last 60 s window, capped at 500 entries); supports optional `since` ISO 8601 query param (#48)
 
 ### Changed
 
