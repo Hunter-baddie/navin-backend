@@ -14,6 +14,7 @@
     "seed": "tsx src/scripts/seed.ts",
     "generate-api-key": "tsx src/scripts/generateApiKey.ts",
     "worker:stellar": "tsx src/workers/stellar.worker.ts",
+    "worker:stellar-indexer": "tsx src/workers/stellar-indexer.worker.ts",
     "migrate:up": "migrate-mongo up --config migrate-mongo.config.cjs",
     "migrate:down": "migrate-mongo down --config migrate-mongo.config.cjs",
     "migrate:status": "migrate-mongo status --config migrate-mongo.config.cjs",

@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `GET /api/activity` — new activity feed endpoint accessible to ADMIN, MANAGER, and VIEWER roles with `before`-based ISO date pagination and `meta: { limit, total, hasMore, before }` envelope
+- Expanded `AuditAction` type with 7 new variants: `SHIPMENT_CREATED`, `PROOF_UPLOADED`, `TELEMETRY_ANCHORED`, `SETTLEMENT_RELEASED`, `ANOMALY_DETECTED`, `USER_INVITED`, `DISPUTE_OPENED`
+- `SHIPMENT_CREATED` audit log written from `createShipmentService` when a shipment is created
+- `PROOF_UPLOADED` audit log written from `uploadShipmentProofService` when delivery proof is attached
+- `DISPUTE_OPENED` audit log written from `createDisputeService` when a dispute is filed
+- `SETTLEMENT_RELEASED` audit log written from `releasePaymentService` on escrow release
+- `USER_INVITED` audit log written from `generateInvitationLink` after invitation token is issued
+- `TELEMETRY_ANCHORED` audit log written from `updateTelemetryAnchor` when a telemetry record is anchored on Stellar
+- `ANOMALY_DETECTED` audit log written from `detectAnomaly` per detected anomaly
+- `ActivityEvent` OpenAPI schema added to `docs/swagger.yaml` with full action/resource enums
+- Integration tests for `/api/activity` covering auth, role guards, mixed event types, `before` pagination, two-page cursor walk, and validation errors
+
+### Changed
+
+- `/api/audit-logs` role guard retained as SUPER_ADMIN + ADMIN only (backward compat); new `/api/activity` opens VIEWER and MANAGER access
+- `createShipmentService` now accepts optional `actorUserId` and strips it before Mongoose insert
+- `uploadShipmentProofService` and `createDisputeService` accept optional `actorUserId` for audit attribution
+- `releasePaymentService` accepts optional `actorUserId`; falls back to `'system'` for automated releases
+- Audit pagination changed from cursor (`nextCursor`) to `before` (ISO date) on the new `/api/activity` endpoint for simpler frontend integration
+
 - Added shared `PASSWORD_MIN_LENGTH` / `PASSWORD_MIN_LENGTH_MESSAGE` constants used by all password Zod schemas
 - Added `STELLAR_WEBHOOK_SECRET` to `src/env.ts` and HMAC signature tests for `POST /api/webhooks/stellar`
 - Added `docs/PAGINATION.md` and shared helpers in `src/shared/utils/pagination.ts` documenting cursor vs offset conventions

@@ -15,6 +15,9 @@ export const config = {
   redisUrl: env.REDIS_URL,
   corsOrigin: env.CORS_ORIGIN,
 
+  // Frontend
+  frontendUrl: env.FRONTEND_URL,
+
   // SMTP (email)
   smtp: {
     host: env.SMTP_HOST,
@@ -50,4 +53,5 @@ export const config = {
 
   // Frontend
   frontendUrl: env.FRONTEND_URL,
+  sendgridApiKey: env.SENDGRID_API_KEY,
 } as const;

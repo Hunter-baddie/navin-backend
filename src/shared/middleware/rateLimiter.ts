@@ -149,6 +149,7 @@ const createRateLimitHandler = (message: string) => (req: Request, res: Response
     : Math.ceil(isDev ? 60 : 15 * 60);
 
   res.setHeader('Retry-After', String(retryAfter));
+
   sendResponse(res, 429, false, message, null, undefined, { retryAfter });
 };
 
