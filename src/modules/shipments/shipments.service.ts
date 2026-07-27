@@ -324,10 +324,40 @@ export interface ShipmentTimelineEvent {
 
 type TimelineEventWithCursor = ShipmentTimelineEvent & { cursorKey: string };
 
+/**
+ * Builds a stable opaque cursor key for timeline pagination.
+ * Format: `{ISO-8601 timestamp}|{source-suffix}` so events that share a
+ * timestamp remain uniquely addressable and sort deterministically.
+ */
 function buildTimelineCursorKey(timestamp: string, suffix: string): string {
   return `${timestamp}|${suffix}`;
 }
 
+/**
+ * Aggregates a paginated shipment timeline from multiple event sources.
+ *
+ * **Aggregation algorithm**
+ * 1. Load the shipment (auth-scoped) and map each milestone to a `STATUS_CHANGE` event.
+ * 2. If delivery proof has an `uploadedAt`, emit a single `PROOF_UPLOADED` event.
+ * 3. In parallel (`Promise.all`), fetch Stellar-anchored telemetry rows and all anomalies,
+ *    then map them to `TELEMETRY_ANCHORED` / `ANOMALY_DETECTED` events respectively.
+ * 4. Union all events into one in-memory array, attach a `cursorKey` per event, then sort
+ *    ascending by `timestamp`, breaking ties with `cursorKey` lexicographic order.
+ * 5. Cursor pagination: if `params.cursor` matches a `cursorKey`, the page starts at the
+ *    next event; otherwise pagination starts from the beginning. Fetch `limit + 1` items
+ *    to compute `hasMore`, then strip internal `cursorKey` fields from the response.
+ *
+ * No Redis/response caching — every call re-aggregates from live documents.
+ *
+ * @param {string} id - Shipment ObjectId.
+ * @param {object} params - Pagination and authorization parameters.
+ * @param {string=} params.cursor - Opaque cursor from a previous page (`timestamp|suffix`).
+ * @param {number} params.limit - Maximum events to return in this page.
+ * @param {string=} params.organizationId - Caller organization for access control.
+ * @param {string=} params.role - Caller role for access control.
+ * @returns {Promise<{ data: ShipmentTimelineEvent[]; nextCursor: string | null; hasMore: boolean }>}
+ *   Sorted timeline page plus cursor metadata for the next page.
+ */
 export const getShipmentTimelineService = async (
   id: string,
   params: { cursor?: string; limit: number; organizationId?: string; role?: string }
@@ -350,6 +380,7 @@ export const getShipmentTimelineService = async (
         userId: milestone.userId,
         walletAddress: milestone.walletAddress,
       },
+      // Cursor key: ISO timestamp + status suffix for stable pagination across equal times.
       cursorKey: buildTimelineCursorKey(timestamp, `status-${milestone.name}`),
     });
   }
@@ -374,10 +405,12 @@ export const getShipmentTimelineService = async (
         recipientSignatureName: proof.recipientSignatureName,
         notes: proof.notes,
       },
+      // Cursor key: ISO timestamp + fixed "proof" suffix (at most one proof event).
       cursorKey: buildTimelineCursorKey(timestamp, 'proof'),
     });
   }
 
+  // Parallel fetch: union of anchored telemetry + anomalies into the same event stream.
   const [telemetryRows, anomalyRows] = await Promise.all([
     Telemetry.find({ shipmentId: id, anchorStatus: TelemetryAnchorStatus.ANCHORED }).lean(),
     Anomaly.find({ shipmentId: id }).lean(),
@@ -394,6 +427,7 @@ export const getShipmentTimelineService = async (
         stellarTxHash: row.stellarTxHash,
         dataHash: row.dataHash,
       },
+      // Cursor key: ISO timestamp + telemetry document id for uniqueness.
       cursorKey: buildTimelineCursorKey(timestamp, `telemetry-${row._id.toString()}`),
     });
   }
@@ -410,6 +444,7 @@ export const getShipmentTimelineService = async (
         severity: row.severity,
         resolved: row.resolved,
       },
+      // Cursor key: ISO timestamp + anomaly document id for uniqueness.
       cursorKey: buildTimelineCursorKey(timestamp, `anomaly-${row._id.toString()}`),
     });
   }
@@ -969,6 +1004,26 @@ export const deleteShipmentService = async (id: string) => {
   return shipment;
 };
 
+/**
+ * Estimates arrival time for an in-transit shipment from recent GPS telemetry.
+ *
+ * **Aggregation algorithm**
+ * 1. **Cache lookup** — return a Redis-cached payload when present (TTL managed by
+ *    `shipmentsEta.cache`; both success and non-transit reason payloads are cached).
+ * 2. Load the shipment; if status is not `IN_TRANSIT`, cache and return a null ETA with reason.
+ * 3. Resolve destination coordinates from off-chain metadata (`destinationCoordinates`,
+ *    nested `destination`, or `route.destination`).
+ * 4. Fetch up to `ETA_POINTS_WINDOW` most recent GPS points (sorted newest-first).
+ * 5. Distance remaining = Haversine from the latest point to the destination.
+ * 6. Average speed = distance/time across chronological segments of the window
+ *    (floored to `MIN_EFFECTIVE_SPEED_KMH`; single-point fallback uses a default speed).
+ * 7. ETA hours = distanceRemaining / averageSpeed; confidence is inferred from sample
+ *    size and raw average speed. Persist the payload to Redis before returning.
+ *
+ * @param {string} id - Shipment ObjectId.
+ * @returns {Promise<ShipmentEtaPayload>} Estimated arrival with distance/speed/confidence,
+ *   or `{ estimatedArrival: null, reason }` when the shipment is not in transit.
+ */
 export const getShipmentEtaService = async (id: string): Promise<ShipmentEtaPayload> => {
   const cached = await readShipmentEtaCache(id);
   if (cached) {
@@ -998,6 +1053,7 @@ export const getShipmentEtaService = async (id: string): Promise<ShipmentEtaPayl
     );
   }
 
+  // Recent GPS window (newest first) used for speed + remaining-distance aggregation.
   const points = (await Telemetry.find({ shipmentId: id })
     .select('latitude longitude timestamp')
     .sort({ timestamp: -1, _id: -1 })

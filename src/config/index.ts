@@ -26,6 +26,7 @@ export const config = {
     pass: env.SMTP_PASS,
     from: env.SMTP_FROM,
   },
+  sendgridApiKey: env.SENDGRID_API_KEY,
 
   // Twilio (SMS)
   twilio: {
