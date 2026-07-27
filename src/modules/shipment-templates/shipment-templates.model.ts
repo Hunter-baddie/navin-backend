@@ -34,4 +34,7 @@ ShipmentTemplateSchema.pre(['find', 'findOne', 'findOneAndUpdate', 'countDocumen
   this.where({ deletedAt: null });
 });
 
-export const ShipmentTemplate = model<IShipmentTemplate>('ShipmentTemplate', ShipmentTemplateSchema);
+export const ShipmentTemplate = model<IShipmentTemplate>(
+  'ShipmentTemplate',
+  ShipmentTemplateSchema
+);
