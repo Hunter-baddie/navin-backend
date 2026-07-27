@@ -17,6 +17,7 @@ await jest.unstable_mockModule('../src/shared/middleware/rateLimiter.js', () => 
   standardLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
   strictLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
   loginLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
+  otpLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 await jest.unstable_mockModule('../src/modules/users/users.model.js', () => ({

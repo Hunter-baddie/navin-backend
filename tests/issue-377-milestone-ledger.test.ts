@@ -42,6 +42,7 @@ jest.unstable_mockModule('../src/modules/users/users.model.js', () => ({
 
 jest.unstable_mockModule('../src/infra/socket/io.js', () => ({
   emitStatusUpdate: jest.fn(),
+  emitPaymentStatusChange: jest.fn(),
 }));
 
 jest.unstable_mockModule('../src/shared/utils/auditLog.js', () => ({

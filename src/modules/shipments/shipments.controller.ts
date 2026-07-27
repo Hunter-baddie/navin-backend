@@ -98,7 +98,7 @@ export const getShipmentTimeline = async (req: Request, res: Response) => {
 };
 
 export const createShipment = async (req: Request, res: Response) => {
-  const shipment = await createShipmentService(req.body);
+  const shipment = await createShipmentService({ ...req.body, actorUserId: req.user?.userId });
   sendResponse(res, 201, true, 'Shipment created', shipment);
 };
 
@@ -154,6 +154,7 @@ export const uploadShipmentProof = async (req: Request, res: Response) => {
   const shipment = await uploadShipmentProofService(id, file, {
     recipientSignatureName,
     notes,
+    actorUserId: req.user?.userId,
   });
 
   sendResponse(res, 200, true, 'Proof uploaded', shipment);
@@ -232,7 +233,11 @@ export const createDispute = async (req: Request, res: Response) => {
   const { type, description } = req.body as { type: string; description: string };
   const file = req.file;
 
-  const dispute = await createDisputeService(id, file, { type, description });
+  const dispute = await createDisputeService(id, file, {
+    type,
+    description,
+    actorUserId: req.user?.userId,
+  });
   sendResponse(res, 201, true, 'Dispute created', dispute);
 };
 

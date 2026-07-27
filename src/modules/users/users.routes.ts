@@ -25,11 +25,7 @@ import { UserRole } from '../../shared/constants/index.js';
 
 export const usersRouter = Router();
 
-usersRouter.get(
-  '/me',
-  requireAuth,
-  asyncHandler(getCurrentUserController)
-);
+usersRouter.get('/me', requireAuth, asyncHandler(getCurrentUserController));
 
 usersRouter.post(
   '/',

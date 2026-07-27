@@ -92,6 +92,8 @@ describe('E2E: Shipment Lifecycle (Hash and Emit Pipeline)', () => {
       getIO: jest.fn(),
       emitTelemetryUpdate: mockEmitTelemetryUpdate,
       emitStatusUpdate: jest.fn(),
+     emitPaymentStatusChange: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
       emitAnomalyDetected: jest.fn(),
     }));
 

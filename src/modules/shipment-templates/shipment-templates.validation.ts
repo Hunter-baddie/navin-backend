@@ -26,7 +26,7 @@ export const UpdateTemplateBodySchema = z
     fields: TemplateFieldsSchema.optional(),
   })
   .strict()
-  .refine((data) => data.name !== undefined || data.fields !== undefined, {
+  .refine(data => data.name !== undefined || data.fields !== undefined, {
     message: 'At least one field (name or fields) must be provided.',
   });
 

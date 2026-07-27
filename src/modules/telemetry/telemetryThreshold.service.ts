@@ -1,6 +1,5 @@
 import type { TelemetryThresholds } from '../../services/anomaly.service.js';
 import { Shipment } from '../shipments/shipments.model.js';
-import { AppError } from '../../shared/http/errors.js';
 import {
   DEFAULT_SHIPMENT_TYPE,
   DEFAULT_TELEMETRY_THRESHOLDS,
@@ -73,7 +72,9 @@ export async function resolveTelemetryThresholdsForShipment(
   const organizationId = shipment.enterpriseId?.toString();
   const rawType = shipment.offChainMetadata?.shipmentType;
   const shipmentType =
-    typeof rawType === 'string' && rawType.trim().length > 0 ? rawType.trim() : DEFAULT_SHIPMENT_TYPE;
+    typeof rawType === 'string' && rawType.trim().length > 0
+      ? rawType.trim()
+      : DEFAULT_SHIPMENT_TYPE;
 
   if (!organizationId) {
     return mergeWithDefaults(undefined);
