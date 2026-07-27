@@ -566,8 +566,8 @@ describe('bulkIngestTelemetry — Property 1: emit count equals item count', () 
 
       await jest.unstable_mockModule('../src/modules/telemetry/telemetry.model.js', () => ({
         Telemetry: {
-          create: jest.fn().mockImplementation(
-            (doc: {
+          create: jest.fn().mockImplementation((doc: unknown) => {
+            const typed = doc as {
               shipmentId: string;
               temperature: number;
               humidity: number;
@@ -576,11 +576,11 @@ describe('bulkIngestTelemetry — Property 1: emit count equals item count', () 
               batteryLevel: number;
               timestamp: Date;
               sensorId?: string;
-            }) =>
-              Promise.resolve(
-                makeSyntheticTelemetryDoc(doc, `telemetry-id-${++createCallCount}`)
-              )
-          ),
+            };
+            return Promise.resolve(
+              makeSyntheticTelemetryDoc(typed, `telemetry-id-${++createCallCount}`)
+            );
+          }),
         },
         TelemetryAnchorStatus: {
           PENDING_ANCHOR: 'PENDING_ANCHOR',
@@ -675,8 +675,8 @@ describe('bulkIngestTelemetry — Property 2: emit payload contains all required
 
       await jest.unstable_mockModule('../src/modules/telemetry/telemetry.model.js', () => ({
         Telemetry: {
-          create: jest.fn().mockImplementation(
-            (doc: {
+          create: jest.fn().mockImplementation((doc: unknown) => {
+            const typed = doc as {
               shipmentId: string;
               temperature: number;
               humidity: number;
@@ -685,11 +685,11 @@ describe('bulkIngestTelemetry — Property 2: emit payload contains all required
               batteryLevel: number;
               timestamp: Date;
               sensorId?: string;
-            }) =>
-              Promise.resolve(
-                makeSyntheticTelemetryDoc(doc, `telemetry-id-${++createCallCount}`)
-              )
-          ),
+            };
+            return Promise.resolve(
+              makeSyntheticTelemetryDoc(typed, `telemetry-id-${++createCallCount}`)
+            );
+          }),
         },
         TelemetryAnchorStatus: {
           PENDING_ANCHOR: 'PENDING_ANCHOR',

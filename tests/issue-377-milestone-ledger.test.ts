@@ -11,7 +11,7 @@ await jest.unstable_mockModule('../src/modules/ledger/ledger.service.js', () => 
 const mockSave = jest.fn<() => Promise<unknown>>();
 let mockShipmentDoc: Record<string, unknown> = {};
 
-const findByIdMock = jest.fn<() => Promise<unknown>>();
+const findByIdMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 
 jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', () => ({
   Shipment: {
@@ -32,8 +32,10 @@ jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', () => ({
 
 jest.unstable_mockModule('../src/modules/users/users.model.js', () => ({
   UserModel: {
-    findById: jest.fn().mockReturnValue({
-      select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
+    findById: jest.fn<(...args: unknown[]) => unknown>().mockReturnValue({
+      select: jest.fn<(...args: unknown[]) => unknown>().mockReturnValue({
+        lean: jest.fn<() => Promise<null>>().mockResolvedValue(null),
+      }),
     }),
   },
 }));
@@ -48,28 +50,34 @@ jest.unstable_mockModule('../src/shared/utils/auditLog.js', () => ({
 }));
 
 jest.unstable_mockModule('../src/modules/analytics/analytics.cache.js', () => ({
-  invalidateAnalyticsPerformanceCache: jest.fn().mockResolvedValue(undefined),
+  invalidateAnalyticsPerformanceCache: jest
+    .fn<() => Promise<void>>()
+    .mockResolvedValue(undefined),
 }));
 
 jest.unstable_mockModule('../src/modules/shipments/shipmentsEta.cache.js', () => ({
-  invalidateShipmentEtaCache: jest.fn().mockResolvedValue(undefined),
-  readShipmentEtaCache: jest.fn().mockResolvedValue(null),
-  writeShipmentEtaCache: jest.fn().mockResolvedValue(undefined),
+  invalidateShipmentEtaCache: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+  readShipmentEtaCache: jest.fn<() => Promise<null>>().mockResolvedValue(null),
+  writeShipmentEtaCache: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }));
 
 jest.unstable_mockModule('../src/services/stellar.service.js', () => ({
-  tokenizeShipment: jest.fn().mockResolvedValue({ stellarTokenId: 'tok', stellarTxHash: 'tx123' }),
+  tokenizeShipment: jest
+    .fn<() => Promise<{ stellarTokenId: string; stellarTxHash: string }>>()
+    .mockResolvedValue({ stellarTokenId: 'tok', stellarTxHash: 'tx123' }),
   releaseEscrow: jest.fn(),
   anchorTelemetryHash: jest.fn(),
   getStellarExplorerUrl: jest.fn(),
 }));
 
 jest.unstable_mockModule('../src/services/mockStorageService.js', () => ({
-  mockUploadToStorage: jest.fn().mockResolvedValue('https://mock-storage.com/proof.jpg'),
+  mockUploadToStorage: jest
+    .fn<() => Promise<string>>()
+    .mockResolvedValue('https://mock-storage.com/proof.jpg'),
 }));
 
 jest.unstable_mockModule('../src/modules/payments/payments.repo.js', () => ({
-  getPaymentByShipmentId: jest.fn().mockResolvedValue(null),
+  getPaymentByShipmentId: jest.fn<() => Promise<null>>().mockResolvedValue(null),
   updatePaymentStatus: jest.fn(),
 }));
 
@@ -97,7 +105,7 @@ describe('Ledger block creation on lifecycle events', () => {
       updatedAt: now,
       save: mockSave.mockImplementation(async function (this: Record<string, unknown>) {
         this.status = 'IN_TRANSIT';
-        this.milestones.push({
+        (this.milestones as unknown[]).push({
           name: 'IN_TRANSIT',
           timestamp: now,
           description: 'Status changed to IN_TRANSIT',
@@ -161,27 +169,25 @@ describe('Ledger block creation on lifecycle events', () => {
       success: true,
       transactionHash: 'stellar-tx-hash-abc',
     });
-    (paymentsRepo.getPaymentByShipmentId as jest.MockedFunction<
-      typeof paymentsRepo.getPaymentByShipmentId
-    >).mockResolvedValue({
+    (paymentsRepo.getPaymentByShipmentId as jest.Mock<(...args: unknown[]) => Promise<unknown>>).mockResolvedValue({
       _id: 'pay-1',
-      shipmentId: 'ship-1' as never,
-      organizationId: 'org-1' as never,
+      shipmentId: 'ship-1',
+      organizationId: 'org-1',
       amount: 100,
       tokenType: 'USDC',
-      status: 'Escrowed' as never,
+      token: 'USDC',
+      status: 'Escrowed',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    (paymentsRepo.updatePaymentStatus as jest.MockedFunction<
-      typeof paymentsRepo.updatePaymentStatus
-    >).mockResolvedValue({
+    (paymentsRepo.updatePaymentStatus as jest.Mock<(...args: unknown[]) => Promise<unknown>>).mockResolvedValue({
       _id: 'pay-1',
-      shipmentId: 'ship-1' as never,
-      organizationId: 'org-1' as never,
+      shipmentId: 'ship-1',
+      organizationId: 'org-1',
       amount: 100,
       tokenType: 'USDC',
-      status: 'Released' as never,
+      token: 'USDC',
+      status: 'Released',
       stellarTxHash: 'stellar-tx-hash-abc',
       createdAt: new Date(),
       updatedAt: new Date(),

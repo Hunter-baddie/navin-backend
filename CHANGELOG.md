@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `reports/generate-coverage.js` and `reports/API_SURFACE_COVERAGE.html` to detect swagger.yaml vs Express route drift (#399)
 - Documented the telemetry ingestion pipeline as a Mermaid sequence diagram in `docs/telemetry-pipeline.md`, including BullMQ queue names (`transaction_queue`, `alert_queue`) and the 25/80 vs legacy 85/90 threshold note (#396)
 - Expanded Swagger schemas for `POST /api/webhooks/iot` (union payload + 202 response) and `POST /api/webhooks/stellar` (#396)
 - `GET /api/activity` — new activity feed endpoint accessible to ADMIN, MANAGER, and VIEWER roles with `before`-based ISO date pagination and `meta: { limit, total, hasMore, before }` envelope

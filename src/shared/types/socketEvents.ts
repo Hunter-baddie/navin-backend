@@ -49,6 +49,7 @@ export interface AnomalyAlertPayload {
  */
 export interface StatusUpdatePayload {
   shipmentId: string;
+  status: string;
   status:
     | 'CREATED'
     | 'PICKUP_CONFIRMED'

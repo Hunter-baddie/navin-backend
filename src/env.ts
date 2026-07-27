@@ -42,6 +42,7 @@ const EnvSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().email('SMTP_FROM must be a valid email').optional(),
+  SENDGRID_API_KEY: z.string().optional(),
 
   // Twilio (SMS)
   TWILIO_SID: z.string().min(1).optional(),
