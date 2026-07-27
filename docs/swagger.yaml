@@ -362,7 +362,6 @@ paths:
   /api/auth/signup:
     post:
       summary: Register a new user
-      description: Creates a new user account. organizationId is optional.
       security: []
       description: Creates a new user account. organizationId is optional. Public signup does not allow privileged role assignment.
       requestBody:
@@ -424,7 +423,7 @@ paths:
                   message:
                     type: string
                   data:
-                    type: 'null'
+                    nullable: true
   /api/audit-logs:
     get:
       summary: Retrieve compliance audit logs
@@ -517,6 +516,9 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/activity:
     get:
@@ -867,7 +869,7 @@ paths:
                   retryAfter:
                     type: integer
                   data:
-                    type: 'null'
+                    nullable: true
   /api/auth/logout:
     post:
       summary: Logout current user
@@ -929,7 +931,7 @@ paths:
                   message:
                     type: string
                   data:
-                    type: 'null'
+                    nullable: true
         '400':
           description: Invalid email format
           content:
@@ -2576,7 +2578,7 @@ paths:
                       - type: object
                         properties:
                           estimatedArrival:
-                            type: 'null'
+                            nullable: true
                           reason:
                             type: string
         '400':
@@ -2739,14 +2741,6 @@ paths:
           description: Forbidden — admin role required
         '422':
           description: Validation error
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
   /api/anomalies:
     get:
       summary: Get anomalies with pagination and filtering
@@ -3074,6 +3068,32 @@ components:
           type: integer
           description: Epoch milliseconds when the event was pushed to the Redis store.
         telemetryId:
+          type: string
+        shipmentId:
+          type: string
+        sensorId:
+          type: string
+        temperature:
+          type: number
+        humidity:
+          type: number
+        latitude:
+          type: number
+        longitude:
+          type: number
+        batteryLevel:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+        dataHash:
+          type: string
+        anchorStatus:
+          type: string
+          enum: [PENDING_ANCHOR, ANCHORED, ANCHOR_FAILED]
+        stellarTxHash:
+          type: string
+          nullable: true
     IotWebhookNormalizedPayload:
       type: object
       description: >
@@ -3208,7 +3228,7 @@ components:
     AnomalyDetectedEvent:
       type: object
       description: Anomaly detected in shipment telemetry.
-      required: [type, publishedAt, anomalyId, shipmentId, type, severity, message, timestamp, resolved]
+      required: [type, publishedAt, anomalyId, shipmentId, severity, message, timestamp, resolved]
       properties:
         type:
           type: string
