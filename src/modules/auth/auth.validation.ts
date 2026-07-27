@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE } from '../../shared/constants/index.js';
 
+/**
+ * Body schema for `POST /api/auth/signup`.
+ *
+ * Business domain: register a new user account. Password minimum length is shared
+ * via PASSWORD_MIN_LENGTH so auth and invitation accept flows stay policy-aligned.
+ * Optional organizationId attaches the user to an existing org when invited/provisioned.
+ */
 export const SignupBodySchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
@@ -8,20 +15,44 @@ export const SignupBodySchema = z.object({
   organizationId: z.string().min(1).optional(),
 });
 
+/**
+ * Body schema for `POST /api/auth/login`.
+ *
+ * Business domain: exchange credentials for a JWT bearer token used by subsequent
+ * authenticated API calls (Authorization: Bearer).
+ */
 export const LoginBodySchema = z.object({
   email: z.string().email(),
   password: z.string(),
 });
 
+/**
+ * Body schema for `POST /api/auth/forgot-password`.
+ *
+ * Business domain: start password reset. Only email is required so the endpoint
+ * cannot be used to probe password strength; the service always returns a generic success.
+ */
 export const ForgotPasswordBodySchema = z.object({
   email: z.string().email(),
 });
 
+/**
+ * Body schema for `POST /api/auth/reset-password`.
+ *
+ * Business domain: complete password reset with a one-time token from email.
+ * newPassword reuses the global minimum length policy to prevent weak resets.
+ */
 export const ResetPasswordBodySchema = z.object({
   token: z.string().min(1),
   newPassword: z.string().min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE),
 });
 
+/**
+ * Body schema for `POST /api/auth/refresh`.
+ *
+ * Business domain: mint a new access token from a presented refresh/session token
+ * without re-collecting credentials (token must be non-empty).
+ */
 export const RefreshBodySchema = z.object({
   token: z.string().min(1),
 });
