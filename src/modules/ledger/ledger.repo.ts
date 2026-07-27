@@ -66,6 +66,10 @@ export async function getLedgerBlocks(filters?: {
     query._id = { $lt: new Types.ObjectId(filters.cursor) };
   }
 
+  const data = await LedgerBlock.find(query)
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(limit + 1)
+    .lean();
   const [data] = await Promise.all([
     LedgerBlock.find(query)
       .sort({ createdAt: -1, _id: -1 })
