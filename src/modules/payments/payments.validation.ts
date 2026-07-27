@@ -40,10 +40,21 @@ export const PaymentIdParamSchema = z.object({
 });
 
 export const GetPaymentsQuerySchema = z.object({
+  // Filtering
   status: z.nativeEnum(PaymentStatus).optional(),
   organizationId: z.string().optional(),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  shipmentId: z.string().optional(),
+
+  // Sorting
+  sortBy: z.enum(['amount', 'status', 'createdAt']).default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+
+  // Pagination mode 1: cursor-based
   cursor: z.string().optional(),
+  limit: z.coerce.number().min(1).max(100).default(20),
+
+  // Pagination mode 2: offset-based
+  page: z.coerce.number().min(1).optional(),
 });
 
 export const DisputeSettlementBodySchema = z.object({

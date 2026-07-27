@@ -63,26 +63,34 @@ export interface PaymentsResult {
 }
 
 /**
- * Retrieves payments for an organization with optional pagination and status filtering.
- * @param {{organizationId: string; status?: PaymentStatus; limit?: number; cursor?: string}} input - Payment query parameters.
+ * Retrieves payments for an organization with optional pagination, status filtering, shipment filtering, and sorting.
+ * @param {{organizationId: string; status?: PaymentStatus; shipmentId?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; limit?: number; cursor?: string; page?: number}} input - Payment query parameters.
  * @returns {Promise<PaymentsResult>} Paginated payment list with metadata.
  */
 export async function getPaymentsService(input: {
   organizationId: string;
   status?: PaymentStatus;
+  shipmentId?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   limit?: number;
   cursor?: string;
+  page?: number;
 }): Promise<PaymentsResult> {
-  const page = await paymentsRepo.getPaymentsByOrganization(input.organizationId, {
+  const pageResult = await paymentsRepo.getPaymentsByOrganization(input.organizationId, {
     status: input.status,
+    shipmentId: input.shipmentId,
+    sortBy: input.sortBy,
+    sortOrder: input.sortOrder,
     limit: input.limit,
     cursor: input.cursor,
+    page: input.page,
   });
   return {
-    data: page.data.map(augmentPayment),
-    total: page.total,
-    hasMore: page.hasMore,
-    nextCursor: page.nextCursor,
+    data: pageResult.data.map(augmentPayment),
+    total: pageResult.total,
+    hasMore: pageResult.hasMore,
+    nextCursor: pageResult.nextCursor,
   };
 }
 

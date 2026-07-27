@@ -38,8 +38,12 @@ export async function getPaymentsByOrganization(
   organizationId: string,
   filters?: {
     status?: PaymentStatus;
+    shipmentId?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
     limit?: number;
     cursor?: string;
+    page?: number;
   }
 ): Promise<PaymentsPage> {
   const limit = filters?.limit ?? 20;
@@ -51,30 +55,55 @@ export async function getPaymentsByOrganization(
     query.status = filters.status;
   }
 
-  if (filters?.cursor) {
-    query._id = { $lt: new Types.ObjectId(filters.cursor) };
+  if (filters?.shipmentId) {
+    query.shipmentId = new Types.ObjectId(filters.shipmentId);
   }
 
-  const [data, total] = await Promise.all([
-    PaymentModel.find(query)
-      .sort({ createdAt: -1, _id: -1 })
+  // Build sort object
+  const sortBy = filters?.sortBy ?? 'createdAt';
+  const sortOrder = filters?.sortOrder === 'asc' ? 1 : -1;
+  const sort: Record<string, 1 | -1> = { [sortBy]: sortOrder, _id: sortOrder };
+
+  // Pagination: prefer page-based if provided, otherwise cursor-based
+  let data: IPayment[];
+  const total = await PaymentModel.countDocuments({
+    organizationId: new Types.ObjectId(organizationId),
+    ...(filters?.status ? { status: filters.status } : {}),
+    ...(filters?.shipmentId ? { shipmentId: new Types.ObjectId(filters.shipmentId) } : {}),
+  });
+
+  if (filters?.page !== undefined) {
+    // Offset-based pagination
+    const skip = Math.max(0, (filters.page - 1) * limit);
+    data = await PaymentModel.find(query).sort(sort).skip(skip).limit(limit).lean();
+
+    return {
+      data,
+      total,
+      hasMore: skip + data.length < total,
+      nextCursor: null,
+    };
+  } else {
+    // Cursor-based pagination
+    if (filters?.cursor) {
+      query._id = { $lt: new Types.ObjectId(filters.cursor) };
+    }
+
+    data = await PaymentModel.find(query)
+      .sort(sort)
       .limit(limit + 1)
-      .lean(),
-    PaymentModel.countDocuments({
-      organizationId: new Types.ObjectId(organizationId),
-      ...(filters?.status ? { status: filters.status } : {}),
-    }),
-  ]);
+      .lean();
 
-  const hasMore = data.length > limit;
-  if (hasMore) data.pop();
+    const hasMore = data.length > limit;
+    if (hasMore) data.pop();
 
-  return {
-    data,
-    total,
-    hasMore,
-    nextCursor: hasMore ? data[data.length - 1]._id.toString() : null,
-  };
+    return {
+      data,
+      total,
+      hasMore,
+      nextCursor: hasMore ? data[data.length - 1]._id.toString() : null,
+    };
+  }
 }
 
 export async function updatePaymentStatus(

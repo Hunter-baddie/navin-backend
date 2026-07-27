@@ -25,6 +25,7 @@ import { telemetryRouter } from './modules/telemetry/telemetry.routes.js';
 import { auditLogsRouter, activityRouter } from './modules/audit-logs/auditLogs.routes.js';
 import { shipmentTemplatesRouter } from './modules/shipment-templates/shipment-templates.routes.js';
 import { eventsRouter } from './modules/events/events.routes.js';
+import { notificationsRouter } from './modules/notifications/notifications.routes.js';
 
 const swaggerDocumentPath = fileURLToPath(new URL('../docs/swagger.yaml', import.meta.url));
 
@@ -73,6 +74,7 @@ export function buildApp() {
   app.use('/api/activity', activityRouter);
   app.use('/api/shipment-templates', shipmentTemplatesRouter);
   app.use('/api/events', eventsRouter);
+  app.use('/api/notifications', notificationsRouter);
 
   if (process.env.NODE_ENV !== 'production') {
     const swaggerDocument = YAML.load(swaggerDocumentPath) as Record<string, unknown>;
