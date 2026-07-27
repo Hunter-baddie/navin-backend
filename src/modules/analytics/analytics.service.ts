@@ -55,7 +55,10 @@ type AnomalyTimeSeriesRow = {
  * @param {Date} endDate - End of the date range.
  * @returns {'daily' | 'weekly' | 'monthly'} Default granularity.
  */
-function calculateDefaultGranularity(startDate: Date, endDate: Date): 'daily' | 'weekly' | 'monthly' {
+function calculateDefaultGranularity(
+  startDate: Date,
+  endDate: Date
+): 'daily' | 'weekly' | 'monthly' {
   const daysDifference = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
   if (daysDifference <= 30) {
     return 'daily';
@@ -74,7 +77,11 @@ export async function getAnalyticsPerformance(
   const startDate = query.startDate;
   const endDate = query.endDate;
   const granularity = query.granularity || calculateDefaultGranularity(startDate, endDate);
-  const cacheKey = analyticsPerformanceCacheKey(startDate.toISOString(), endDate.toISOString(), granularity);
+  const cacheKey = analyticsPerformanceCacheKey(
+    startDate.toISOString(),
+    endDate.toISOString(),
+    granularity
+  );
 
   const cached = await readAnalyticsPerformanceCache(cacheKey);
   if (cached) {
@@ -82,7 +89,8 @@ export async function getAnalyticsPerformance(
   }
 
   // Map granularity to MongoDB dateTrunc unit
-  const dateTruncUnit = granularity === 'daily' ? 'day' : granularity === 'weekly' ? 'week' : 'month';
+  const dateTruncUnit =
+    granularity === 'daily' ? 'day' : granularity === 'weekly' ? 'week' : 'month';
 
   // Performance window is based on shipment `createdAt` (the document timestamp).
   const shipmentPipeline: PipelineStage[] = [
@@ -172,7 +180,7 @@ export async function getAnalyticsPerformance(
   })) as AggregationFacet[];
 
   // Get anomaly time series
-  const anomalyTimeSeries = await Anomaly.aggregate([
+  const anomalyTimeSeries = (await Anomaly.aggregate([
     {
       $match: {
         timestamp: { $gte: startDate, $lte: endDate },
@@ -191,7 +199,7 @@ export async function getAnalyticsPerformance(
       },
     },
     { $sort: { _id: 1 } },
-  ]) as AnomalyTimeSeriesRow[];
+  ])) as AnomalyTimeSeriesRow[];
 
   // Create a map for anomalies for easy lookup
   const anomalyMap = new Map<string, number>();
@@ -204,12 +212,12 @@ export async function getAnalyticsPerformance(
     total: Number(row.total ?? 0),
   }));
 
-  const averageDeliveryTimeByLogisticsId = (shipmentFacet?.averageDeliveryTimeByLogisticsId ?? []).map(
-    (row: AggregationRow) => ({
-      logisticsId: String(row._id),
-      averageDeliveryTimeMs: Number(row.averageDeliveryTimeMs ?? 0),
-    })
-  );
+  const averageDeliveryTimeByLogisticsId = (
+    shipmentFacet?.averageDeliveryTimeByLogisticsId ?? []
+  ).map((row: AggregationRow) => ({
+    logisticsId: String(row._id),
+    averageDeliveryTimeMs: Number(row.averageDeliveryTimeMs ?? 0),
+  }));
 
   const totalDelayedShipments = Number(shipmentFacet?.delayedShipments?.[0]?.totalDelayed ?? 0);
 

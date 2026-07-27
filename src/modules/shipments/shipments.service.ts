@@ -7,7 +7,7 @@ import { emitStatusUpdate } from '../../infra/socket/io.js';
 import { Anomaly } from '../anomaly/anomaly.model.js';
 import { Telemetry } from '../telemetry/telemetry.model.js';
 import { TelemetryAnchorStatus } from '../../shared/types/telemetry.js';
-import { AppError } from '../../shared/http/errors.js';
+import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import {
   IShipment,
   ShipmentStatus,
@@ -30,13 +30,7 @@ import {
   type ShipmentEtaPayload,
 } from './shipmentsEta.cache.js';
 import { isAuthorizedForShipment } from '../../infra/socket/shipmentRooms.js';
-import { ErrorCodes } from '../../shared/http/errors.js';
 import { UserRole } from '../../shared/constants/index.js';
-
-type BulkUpdateResult = {
-  updated: number;
-  failed: Array<{ id: string; reason: string }>;
-};
 
 type ShipmentListResult = {
   data: IShipment[];
@@ -455,11 +449,13 @@ export const createShipmentService = async (data: {
   trackingNumber?: string;
   origin: string;
   destination: string;
+  actorUserId?: string;
   [key: string]: unknown;
 }) => {
+  const { actorUserId, ...shipmentData } = data;
   const trackingNumber =
-    data.trackingNumber || `NVN-${Math.floor(100000 + Math.random() * 900000)}`;
-  const shipment = new Shipment({ ...data, trackingNumber });
+    shipmentData.trackingNumber || `NVN-${Math.floor(100000 + Math.random() * 900000)}`;
+  const shipment = new Shipment({ ...shipmentData, trackingNumber });
   await shipment.save();
 
   try {
@@ -475,6 +471,18 @@ export const createShipmentService = async (data: {
   } catch (err) {
     logger.warn({ err, shipmentId: shipment._id.toString() }, 'Stellar tokenization skipped');
   }
+
+  auditLog({
+    userId: actorUserId ?? 'system',
+    action: 'SHIPMENT_CREATED',
+    resourceId: shipment._id.toString(),
+    timestamp: new Date(),
+    metadata: {
+      trackingNumber: shipment.trackingNumber,
+      origin: shipment.origin,
+      destination: shipment.destination,
+    },
+  });
 
   return shipment;
 };
@@ -612,7 +620,6 @@ export const updateShipmentStatusService = async (
         }
       }
     } catch (escrowError) {
-      console.warn(`[Shipment] Failed to trigger escrow release for ${id}:`, escrowError);
       logger.warn({ err: escrowError, shipmentId: id }, 'Failed to trigger escrow release');
       // Don't fail the shipment status update if escrow release fails
       // The payment status can be manually updated later via webhook
@@ -657,7 +664,7 @@ export const updateShipmentStatusService = async (
 export const uploadShipmentProofService = async (
   id: string,
   file: Express.Multer.File,
-  proof: { recipientSignatureName?: string; notes?: string }
+  proof: { recipientSignatureName?: string; notes?: string; actorUserId?: string }
 ) => {
   let proofUrl: string;
 
@@ -702,6 +709,16 @@ export const uploadShipmentProofService = async (
     );
   }
 
+  if (proof.actorUserId) {
+    auditLog({
+      userId: proof.actorUserId,
+      action: 'PROOF_UPLOADED',
+      resourceId: id,
+      timestamp: new Date(),
+      metadata: { proofUrl, recipientSignatureName: proof.recipientSignatureName },
+    });
+  }
+
   return shipment;
 };
 
@@ -716,7 +733,7 @@ export const uploadShipmentProofService = async (
 export const createDisputeService = async (
   id: string,
   file: Express.Multer.File | undefined,
-  data: { type: string; description: string }
+  data: { type: string; description: string; actorUserId?: string }
 ) => {
   let evidenceUrl: string | undefined;
 
@@ -751,6 +768,16 @@ export const createDisputeService = async (
 
   shipment.disputes.push(dispute as any);
   await shipment.save();
+
+  if (data.actorUserId) {
+    auditLog({
+      userId: data.actorUserId,
+      action: 'DISPUTE_OPENED',
+      resourceId: id,
+      timestamp: new Date(),
+      metadata: { type: data.type, referenceNumber },
+    });
+  }
 
   // Return the newly created dispute (the last one in the array)
   return shipment.disputes[shipment.disputes.length - 1];

@@ -130,12 +130,29 @@ describe('RBAC Matrix Integration Tests', () => {
       detectAnomaly: jest.fn<any>().mockResolvedValue({ detected: false, anomalies: [] }),
     }));
 
+    // ✅ Correct layout - top-level export matching shipments.service.ts
     await jest.unstable_mockModule('../src/modules/shipments/shipments.service.js', () => ({
+      DOCUMENT_UPLOAD_CONSTRAINTS: {
+        mimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+        maxSize: 10 * 1024 * 1024,
+      },
+      PHOTO_UPLOAD_CONSTRAINTS: {
+        mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'],
+        maxSize: 5 * 1024 * 1024,
+        maxPerShipment: 10,
+      },
       getShipmentsService: jest.fn<any>().mockResolvedValue({
         data: [],
-        nextCursor: null,
-        hasMore: false,
+        page: 1,
+        limit: 20,
+        total: 0,
       }),
+      getShipmentByIdService: jest
+        .fn<any>()
+        .mockResolvedValue({ _id: 'shipment-1', status: 'IN_TRANSIT' }),
+      getShipmentTimelineService: jest
+        .fn<any>()
+        .mockResolvedValue({ data: [], nextCursor: null, hasMore: false }),
       createShipmentService: jest.fn<any>().mockResolvedValue({ _id: 'shipment-1' }),
       patchShipmentService: jest
         .fn<any>()
@@ -143,10 +160,21 @@ describe('RBAC Matrix Integration Tests', () => {
       updateShipmentStatusService: jest
         .fn<any>()
         .mockResolvedValue({ _id: 'shipment-1', status: 'IN_TRANSIT' }),
-      uploadShipmentProofService: jest.fn<any>(),
-      deleteShipmentService: jest.fn<any>(),
-      findShipments: jest.fn<any>(),
+      uploadShipmentProofService: jest.fn<any>().mockResolvedValue({ _id: 'shipment-1' }),
+      uploadShipmentDocumentService: jest.fn<any>().mockResolvedValue({ url: 'http://mock/doc' }),
+      uploadShipmentPhotoService: jest.fn<any>().mockResolvedValue({ url: 'http://mock/photo' }),
+      createDisputeService: jest
+        .fn<any>()
+        .mockResolvedValue({ referenceNumber: 'DSP-000001', status: 'PENDING' }),
+      deleteShipmentService: jest.fn<any>().mockResolvedValue({ _id: 'shipment-1' }),
+      getShipmentEtaService: jest
+        .fn<any>()
+        .mockResolvedValue({ estimatedArrival: null, reason: 'not in transit' }),
+      exportShipmentsService: jest.fn<any>().mockResolvedValue([]),
+      shipmentsToCSV: jest.fn<any>().mockReturnValue(''),
+      findShipments: jest.fn<any>().mockResolvedValue([]),
     }));
+
 
     await jest.unstable_mockModule('../src/infra/redis/queue.js', () => ({
       pushAlertJob: jest.fn<any>().mockResolvedValue(undefined),
@@ -159,8 +187,10 @@ describe('RBAC Matrix Integration Tests', () => {
       emitTelemetryUpdate: jest.fn(),
       emitAnomalyDetected: jest.fn(),
       emitStatusUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
       initSocketIO: jest.fn(),
       getIO: jest.fn(),
+      getActiveUsers: jest.fn().mockReturnValue(new Map()),
       closeSocketIO: jest.fn(async () => undefined),
     }));
 

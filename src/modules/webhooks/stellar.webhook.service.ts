@@ -53,7 +53,10 @@ async function handleReleaseEvent(paymentId: string, transactionHash: string) {
       });
     }
   } catch (ledgerErr) {
-    logger.warn({ err: ledgerErr, paymentId }, 'Failed to create ledger block for settlement completion');
+    logger.warn(
+      { err: ledgerErr, paymentId },
+      'Failed to create ledger block for settlement completion'
+    );
   }
 
   logger.info({ paymentId, transactionHash }, 'Payment marked as RELEASED');

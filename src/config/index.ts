@@ -15,8 +15,10 @@ export const config = {
   redisUrl: env.REDIS_URL,
   corsOrigin: env.CORS_ORIGIN,
 
-  // SMTP (email)
+  // Frontend
   frontendUrl: env.FRONTEND_URL,
+
+  // SMTP (email)
   smtp: {
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
