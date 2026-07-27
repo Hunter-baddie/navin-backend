@@ -200,10 +200,223 @@ paths:
                         type: string
                         format: date-time
                         description: Current UTC timestamp
+
+  /api/addresses:
+    get:
+      tags: [Addresses]
+      summary: List address book entries
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+
+        Planned Address Book CRUD + default-address toggle.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/355
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Addresses]
+      summary: Create address book entry
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/355
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+  /api/addresses/{id}:
+    get:
+      tags: [Addresses]
+      summary: Get address by id
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/355
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented
+    patch:
+      tags: [Addresses]
+      summary: Update address / set default
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/355
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented
+    delete:
+      tags: [Addresses]
+      summary: Delete address
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/355
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented
+
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+
+        Planned Notifications module (model + CRUD).
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/362
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+  /api/notifications/{id}:
+    patch:
+      tags: [Notifications]
+      summary: Mark notification read / update
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/362
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented
+    delete:
+      tags: [Notifications]
+      summary: Delete notification
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/362
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented
+  /api/notifications/preferences:
+    get:
+      tags: [Notifications]
+      summary: Get notification channel preferences
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+
+        Planned preference + channel plumbing.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/363
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+    put:
+      tags: [Notifications]
+      summary: Update notification preferences
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/363
+      x-implemented: false
+      security:
+        - bearerAuth: []
+      responses:
+        '501':
+          description: Not implemented
+  /api/notifications/otp:
+    post:
+      tags: [Notifications]
+      summary: Send SMS OTP
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+
+        Planned SMS OTP verification endpoints (Twilio).
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/364
+      x-implemented: false
+      responses:
+        '501':
+          description: Not implemented
+  /api/notifications/otp/verify:
+    post:
+      tags: [Notifications]
+      summary: Verify SMS OTP
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+        Implementing issue: https://github.com/Navin-xmr/navin-backend/issues/364
+      x-implemented: false
+      responses:
+        '501':
+          description: Not implemented
+
+  /api/public/tracking/{trackingNumber}:
+    get:
+      tags: [Public Tracking]
+      summary: Public shipment tracking by tracking number
+      description: |
+        **NOT IMPLEMENTED** — stub for frontend discovery.
+
+        Unauthenticated public tracking surface expected by the frontend.
+        No dedicated implementing issue yet (planned alongside shipments UX).
+      x-implemented: false
+      parameters:
+        - in: path
+          name: trackingNumber
+          required: true
+          schema:
+            type: string
+      responses:
+        '501':
+          description: Not implemented
+
   /api/events:
     get:
       summary: Real-time event stream (SSE)
       description: |
+        Status: implemented (x-implemented: true). Listed in API-QA #398 for completeness.
         Opens a Server-Sent Events stream for the authenticated user. Events are scoped
         per user via Redis pub/sub channels and include shipment, settlement, anomaly,
         and location updates. A heartbeat comment is sent every 30 seconds.
