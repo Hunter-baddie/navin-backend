@@ -1515,7 +1515,8 @@ paths:
                   description: MongoDB ObjectId of the related shipment.
                 amount:
                   type: number
-                  exclusiveMinimum: 0
+                  minimum: 0
+                  exclusiveMinimum: true
                   description: Positive settlement amount.
                 token:
                   type: string
