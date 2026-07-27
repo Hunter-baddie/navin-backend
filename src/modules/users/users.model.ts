@@ -15,6 +15,8 @@ const UserSchema = new mongoose.Schema(
     role: { type: String, enum: Object.values(UserRole), required: true },
     organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: false },
     walletAddress: { type: String, required: false },
+    phone: { type: String, required: false },
+    phoneVerified: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
   },
   {

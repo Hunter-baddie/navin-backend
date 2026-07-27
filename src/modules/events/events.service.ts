@@ -1,4 +1,7 @@
+import type { Response } from 'express';
+
 import { getRecentEventsSince } from '../../infra/redis/recentEvents.js';
+import { registerSseClient } from '../../infra/sse/sseHub.js';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import type { RealtimeEvent } from './events.types.js';
 
@@ -22,8 +25,7 @@ export async function pollEventsSince(since: Date): Promise<RealtimeEvent[]> {
       err
     );
   }
-import type { Response } from 'express';
-import { registerSseClient } from '../../infra/sse/sseHub.js';
+}
 
 /**
  * Opens a user-scoped SSE stream. The connection stays open until the client disconnects.

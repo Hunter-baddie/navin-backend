@@ -77,6 +77,7 @@ export const ErrorCodes = {
   PHOTO_LIMIT_EXCEEDED: 'ERR_PHOTO_LIMIT_EXCEEDED',
   EVENTS_POLL_FAILED: 'ERR_EVENTS_POLL_FAILED',
   TOKEN_REVOKED: 'ERR_AUTH_TOKEN_REVOKED',
+  NOTIFICATION_NOT_FOUND: 'ERR_NOTIFICATION_NOT_FOUND',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

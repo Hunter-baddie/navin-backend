@@ -8,7 +8,12 @@ import YAML from 'yamljs';
 import { requestId } from './shared/middleware/requestId.js';
 import { notFound } from './shared/middleware/notFound.js';
 import { errorMiddleware } from './shared/http/errorMiddleware.js';
-import { standardLimiter, loginLimiter, strictLimiter, otpLimiter } from './shared/middleware/rateLimiter.js';
+import {
+  standardLimiter,
+  loginLimiter,
+  strictLimiter,
+  otpLimiter,
+} from './shared/middleware/rateLimiter.js';
 import { corsMiddleware, corsPreflight } from './config/cors.js';
 import { buildHelmetMiddleware } from './config/helmet.js';
 
@@ -26,6 +31,7 @@ import { auditLogsRouter, activityRouter } from './modules/audit-logs/auditLogs.
 import { shipmentTemplatesRouter } from './modules/shipment-templates/shipment-templates.routes.js';
 import { ledgerRouter } from './modules/ledger/ledger.routes.js';
 import { eventsRouter } from './modules/events/events.routes.js';
+import { notificationsRouter } from './modules/notifications/notifications.routes.js';
 
 const swaggerDocumentPath = fileURLToPath(new URL('../docs/swagger.yaml', import.meta.url));
 
@@ -75,6 +81,7 @@ export function buildApp() {
   app.use('/api/shipment-templates', shipmentTemplatesRouter);
   app.use('/api/ledger', ledgerRouter);
   app.use('/api/events', eventsRouter);
+  app.use('/api/notifications', notificationsRouter);
 
   if (process.env.NODE_ENV !== 'production') {
     const swaggerDocument = YAML.load(swaggerDocumentPath) as Record<string, unknown>;

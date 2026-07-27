@@ -63,14 +63,28 @@ export const getPaymentsController = asyncHandler(
     const result = await paymentsService.getPaymentsService({
       organizationId: req.user?.organizationId ?? '',
       status: query.status,
+      shipmentId: query.shipmentId,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
       limit: query.limit,
       cursor: query.cursor,
+      page: query.page,
     });
-    sendResponse(res, 200, true, 'Payments retrieved successfully', result.data, {
-      total: result.total,
-      hasMore: result.hasMore,
-      nextCursor: result.nextCursor,
-    });
+
+    // Build meta based on pagination mode
+    const meta: Record<string, unknown> = { total: result.total };
+
+    if (query.page !== undefined) {
+      // Offset-based pagination
+      meta.page = query.page;
+      meta.limit = query.limit;
+    } else {
+      // Cursor-based pagination
+      meta.hasMore = result.hasMore;
+      meta.nextCursor = result.nextCursor;
+    }
+
+    sendResponse(res, 200, true, 'Payments retrieved successfully', result.data, meta);
   }
 );
 

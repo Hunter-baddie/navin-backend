@@ -1,8 +1,9 @@
 import type { RequestHandler } from 'express';
 
 import type { PollQuery } from './events.validation.js';
-import { pollEventsSince } from './events.service.js';
+import { pollEventsSince, subscribeUserToEvents } from './events.service.js';
 import { sendResponse } from '../../shared/http/sendResponse.js';
+import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
 /**
  * Returns real-time events that occurred after the `since` timestamp.
