@@ -5,6 +5,13 @@ info:
   description: |
     Navin logistics/supply-chain API.
 
+    ## Authentication & roles
+    Protected endpoints use HTTP Bearer JWT (`bearerAuth`). Token claims include `userId`,
+    `role` (`SUPER_ADMIN` | `ADMIN` | `MANAGER` | `VIEWER` | `CUSTOMER`), optional
+    `organizationId` / `organizationType` (`ENTERPRISE` | `LOGISTICS`), and `jti`.
+    Backend roles differ from frontend company/customer personas (and the pending Driver role).
+    See `docs/auth-model.md` for the full role↔persona mapping and permission matrix.
+
     ## Pagination
     Use **cursor** pagination (`cursor`, `limit` → `meta.nextCursor`, `meta.hasMore`) for large
     collections (telemetry, anomalies, payments). Use **offset** pagination (`page`, `limit` →
@@ -23,8 +30,24 @@ x-rate-limit:
 paths:
   /api/webhooks/iot:
     post:
-      summary: IoT webhook endpoint for telemetry data
-      description: Receives telemetry data from IoT sensors. Requires API key authentication.
+      tags:
+        - Webhooks
+      summary: IoT webhook — ingest telemetry into the anchoring pipeline
+      description: |
+        Receives telemetry from IoT sensors/gateways and kicks off the async ingestion pipeline:
+
+        1. **Normalize** — union payload → canonical fields (`normalizeIotWebhookBody`)
+        2. **Persist** — MongoDB telemetry with `anchorStatus=PENDING_ANCHOR` and `dataHash`
+        3. **Queue** — enqueue BullMQ job on `transaction_queue` (`anchor_telemetry`)
+        4. **Emit socket** — `telemetry_update` to the shipment room
+        5. **Detect anomaly** (async `setImmediate`) — thresholds default to **maxTemp=25°C / maxHumidity=80% / minBatteryLevel=20%**
+           (operational defaults; not the legacy 85/90 hardcodes on `GET /api/telemetry/thresholds`)
+        6. **Alert** — on detection, emit `anomaly_detected` and push to `alert_queue`
+
+        Returns **202 Accepted** as soon as the record is stored and the anchor job is queued.
+        Stellar anchoring is completed by `stellar.worker` consuming `transaction_queue`.
+
+        See `docs/telemetry-pipeline.md` for the full sequence diagram.
       security:
         - apiKeyAuth: []
       requestBody:
@@ -32,72 +55,55 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - shipmentId
-                - temperature
-                - humidity
-                - latitude
-                - longitude
-                - batteryLevel
-                - timestamp
-              properties:
-                shipmentId:
-                  type: string
-                  description: MongoDB ObjectId of the shipment
-                temperature:
-                  type: number
-                  description: Temperature in Celsius
-                humidity:
-                  type: number
-                  description: Humidity percentage
-                latitude:
-                  type: number
-                  description: GPS latitude
-                longitude:
-                  type: number
-                  description: GPS longitude
-                batteryLevel:
-                  type: number
-                  description: Battery level percentage
-                timestamp:
-                  type: string
-                  format: date-time
-                  description: Timestamp of the telemetry reading
+              $ref: '#/components/schemas/IotWebhookBody'
+            examples:
+              normalizedShipmentPayload:
+                summary: Shipment-centric (normalized) payload
+                value:
+                  shipmentId: '507f1f77bcf86cd799439011'
+                  temperature: 22.5
+                  humidity: 55
+                  latitude: 12.34
+                  longitude: 56.78
+                  batteryLevel: 88
+                  timestamp: '2026-01-15T12:30:00.000Z'
+              sensorCentricPayload:
+                summary: Sensor-centric payload (temp + location)
+                value:
+                  sensorId: 'SENSOR-42'
+                  temp: 22.5
+                  humidity: 55
+                  location:
+                    lat: 12.34
+                    lng: 56.78
+                  batteryLevel: 88
+                  timestamp: '2026-01-15T12:30:00.000Z'
       responses:
-        '201':
-          description: Telemetry data received and processed
+        '202':
+          description: >
+            Telemetry accepted and queued for Stellar anchoring.
+            Anomaly detection runs asynchronously after this response.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      _id:
-                        type: string
-                      shipmentId:
-                        type: string
-                      temperature:
-                        type: number
-                      humidity:
-                        type: number
-                      latitude:
-                        type: number
-                      longitude:
-                        type: number
-                      batteryLevel:
-                        type: number
-                      timestamp:
-                        type: string
-                        format: date-time
-                      dataHash:
-                        type: string
-                      stellarTxHash:
-                        type: string
+                $ref: '#/components/schemas/IotWebhookAcceptedResponse'
+              example:
+                success: true
+                message: Telemetry received and queued for Stellar anchoring
+                data:
+                  _id: t1
+                  shipmentId: '507f1f77bcf86cd799439011'
+                  sensorId: 'SENSOR-42'
+                  temperature: 22.5
+                  humidity: 55
+                  latitude: 12.34
+                  longitude: 56.78
+                  batteryLevel: 88
+                  timestamp: '2026-01-15T12:30:00.000Z'
+                  dataHash: 'a1b2c3...'
+                  anchorStatus: PENDING_ANCHOR
         '400':
-          description: Invalid request payload
+          description: Invalid request payload (Zod validation failure or unresolvable shipmentId)
           content:
             application/json:
               schema:
@@ -108,13 +114,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No active shipment found for the given sensorId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/webhooks/stellar:
     post:
-      summary: Stellar proof-of-delivery webhook
-      description: >
-        Receives Stellar settlement callbacks for proof-of-delivery events.
-        Requires a valid HMAC-SHA256 signature in the x-stellar-signature header,
-        computed over the raw request body using STELLAR_WEBHOOK_SECRET.
+      tags:
+        - Webhooks
+      summary: Stellar proof-of-delivery / settlement webhook
+      description: |
+        Receives Stellar settlement callbacks for proof-of-delivery and escrow events
+        (`release`, `escrow`, `failed`). This is the settlement side of the telemetry
+        pipeline — distinct from BullMQ `transaction_queue` hash anchoring.
+
+        Requires a valid HMAC-SHA256 signature in the `x-stellar-signature` header,
+        computed over the raw request body using `STELLAR_WEBHOOK_SECRET`.
+
+        On `release`, payment status becomes RELEASED and a `SETTLEMENT_COMPLETED`
+        ledger block may be written. See `docs/telemetry-pipeline.md`.
       security:
         - stellarSignature: []
       requestBody:
@@ -122,63 +142,23 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - id
-                - type
-                - paymentId
-                - transactionHash
-                - amount
-                - timestamp
-              properties:
-                id:
-                  type: string
-                  description: Unique Stellar webhook event identifier
-                type:
-                  type: string
-                  enum: [release, escrow, failed]
-                  description: Stellar webhook event type
-                paymentId:
-                  type: string
-                  description: Payment identifier linked to the shipment
-                transactionHash:
-                  type: string
-                  description: Stellar transaction hash for the settlement event
-                amount:
-                  type: number
-                  description: Amount associated with the Stellar event
-                timestamp:
-                  type: string
-                  format: date-time
-                  description: ISO 8601 timestamp for the webhook event
-                signature:
-                  type: string
-                  description: Optional HMAC signature value for webhook verification
+              $ref: '#/components/schemas/StellarWebhookPayload'
+            example:
+              id: evt_01HXYZ
+              type: release
+              paymentId: '507f1f77bcf86cd799439022'
+              transactionHash: 'a1b2c3d4e5f6...'
+              amount: 1500
+              timestamp: '2026-01-15T13:00:00.000Z'
       responses:
         '200':
           description: Stellar webhook received and processed successfully
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  message:
-                    type: string
-                  data:
-                    type: object
-                    properties:
-                      event:
-                        type: string
-                      paymentId:
-                        type: string
-                      status:
-                        type: string
-                      transactionHash:
-                        type: string
+                $ref: '#/components/schemas/StellarWebhookResponse'
         '400':
-          description: Invalid Stellar webhook payload
+          description: Invalid Stellar webhook payload or unknown event type
           content:
             application/json:
               schema:
@@ -220,6 +200,53 @@ paths:
                         type: string
                         format: date-time
                         description: Current UTC timestamp
+  /api/events:
+    get:
+      summary: Real-time event stream (SSE)
+      description: |
+        Opens a Server-Sent Events stream for the authenticated user. Events are scoped
+        per user via Redis pub/sub channels and include shipment, settlement, anomaly,
+        and location updates. A heartbeat comment is sent every 30 seconds.
+
+        Authentication accepts either `Authorization: Bearer <token>` or `?token=<jwt>`
+        for EventSource clients that cannot set custom headers.
+      tags:
+        - Events
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: token
+          required: false
+          schema:
+            type: string
+          description: JWT for EventSource clients that cannot send Authorization headers
+      responses:
+        '200':
+          description: SSE stream opened
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  Stream of SSE messages. Event types: shipment:status, shipment:milestone,
+                  settlement:status, notification:new, anomaly:detected, location:update.
+              examples:
+                shipmentStatus:
+                  summary: Shipment status change
+                  value: |
+                    event: shipment:status
+                    data: {"type":"shipment:status","shipmentId":"671000000000000000000001","newStatus":"IN_TRANSIT","timestamp":"2026-01-15T12:00:00.000Z"}
+                heartbeat:
+                  summary: Keep-alive heartbeat (every 30s)
+                  value: |
+                    : heartbeat
+        '401':
+          description: Missing, invalid, or revoked JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/auth/api-keys:
     post:
       summary: Create a new API key
@@ -443,6 +470,146 @@ paths:
         '403':
           description: Forbidden
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/activity:
+    get:
+      summary: Get activity feed
+      description: |
+        Returns a paginated activity feed of platform-wide events ordered
+        newest-first. Accessible to ADMIN, MANAGER, and VIEWER roles.
+
+        **Pagination** uses the `before` parameter (ISO 8601 date-time string).
+        Pass the `meta.before` value from the previous response as the next
+        `before` to walk backwards through history.
+
+        **Action types** currently emitted:
+        `SHIPMENT_CREATED`, `SHIPMENT_STATUS_CHANGED`, `PROOF_UPLOADED`,
+        `DISPUTE_OPENED`, `TELEMETRY_ANCHORED`, `SETTLEMENT_RELEASED`,
+        `ANOMALY_DETECTED`, `USER_INVITED`, `RBAC_ROLE_MODIFIED`,
+        `API_KEY_GENERATED`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: before
+          schema:
+            type: string
+            format: date-time
+          description: >
+            Return only events whose timestamp is strictly older than this
+            ISO 8601 date-time. Omit to fetch the most recent events.
+          example: '2026-06-01T12:00:00.000Z'
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of events to return (1–100).
+        - in: query
+          name: userId
+          schema:
+            type: string
+          description: Filter by the actor's user ID.
+        - in: query
+          name: action
+          schema:
+            type: string
+            enum:
+              - SHIPMENT_CREATED
+              - SHIPMENT_STATUS_CHANGED
+              - PROOF_UPLOADED
+              - DISPUTE_OPENED
+              - TELEMETRY_ANCHORED
+              - SETTLEMENT_RELEASED
+              - ANOMALY_DETECTED
+              - USER_INVITED
+              - RBAC_ROLE_MODIFIED
+              - API_KEY_GENERATED
+          description: Filter by action type.
+        - in: query
+          name: resource
+          schema:
+            type: string
+            enum:
+              - SHIPMENT
+              - TELEMETRY
+              - PAYMENT
+              - ANOMALY
+              - USER
+              - API_KEY
+          description: Filter by resource category.
+      responses:
+        '200':
+          description: Activity feed retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - data
+                  - meta
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Activity retrieved
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActivityEvent'
+                  meta:
+                    type: object
+                    required:
+                      - limit
+                      - total
+                      - hasMore
+                      - before
+                    properties:
+                      limit:
+                        type: integer
+                        example: 20
+                      total:
+                        type: integer
+                        description: Total matching events (unfiltered by before).
+                        example: 142
+                      hasMore:
+                        type: boolean
+                        description: Whether older events exist beyond this page.
+                        example: true
+                      before:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        description: >
+                          Pass this value as the `before` query parameter to
+                          fetch the next page. Null when no more pages exist.
+                        example: '2026-05-31T08:43:21.000Z'
+        '400':
+          description: Validation error (invalid `before` format or `limit` out of range).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: >
+            Insufficient role. Requires ADMIN, MANAGER, or VIEWER.
+            CUSTOMER and unauthenticated callers are rejected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/shipment-templates:
     get:
       summary: List all shipment templates for the caller's organization
@@ -1952,6 +2119,13 @@ paths:
   /api/shipments/{id}:
     get:
       summary: Get a single shipment by ID
+      description: >
+        Returns a single shipment wrapped in the standard API envelope
+        `{ success, message, data }`. The `data` object follows the Shipment
+        schema, including frontend-expected fields. Fields marked
+        `x-implemented: false` (originLat/Lng, destinationLat/Lng, isDelayed)
+        are documented for contract visibility but are not yet returned by
+        the API.
       security:
         - bearerAuth: []
       parameters:
@@ -2852,6 +3026,110 @@ components:
           type: integer
           description: Epoch milliseconds when the event was pushed to the Redis store.
         telemetryId:
+    IotWebhookNormalizedPayload:
+      type: object
+      description: >
+        Shipment-centric telemetry payload. `batteryLevel` defaults to 100 when omitted.
+        Temperature range enforced by Zod: -50..100 °C.
+      additionalProperties: false
+      required:
+        - shipmentId
+        - temperature
+        - humidity
+        - latitude
+        - longitude
+        - timestamp
+      properties:
+        sensorId:
+          type: string
+          minLength: 1
+          description: Optional sensor identifier
+        shipmentId:
+          type: string
+          minLength: 1
+          description: MongoDB ObjectId of the shipment
+        temperature:
+          type: number
+          minimum: -50
+          maximum: 100
+          description: Temperature in Celsius
+        humidity:
+          type: number
+          description: Humidity percentage
+        latitude:
+          type: number
+          description: GPS latitude
+        longitude:
+          type: number
+          description: GPS longitude
+        batteryLevel:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Battery level percentage (optional; defaults to 100)
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the telemetry reading
+    IotWebhookSensorPayload:
+      type: object
+      description: >
+        Sensor-centric telemetry payload. `temp` maps to temperature;
+        `location.lat` / `location.lng` map to latitude / longitude during normalize.
+      additionalProperties: false
+      required:
+        - sensorId
+        - temp
+        - humidity
+        - location
+        - timestamp
+      properties:
+        sensorId:
+          type: string
+          minLength: 1
+          description: Sensor identifier used to resolve the active shipment
+        temp:
+          type: number
+          minimum: -50
+          maximum: 100
+          description: Temperature in Celsius (normalized to `temperature`)
+        humidity:
+          type: number
+          description: Humidity percentage
+        location:
+          type: object
+          additionalProperties: false
+          required:
+            - lat
+            - lng
+          properties:
+            lat:
+              type: number
+              description: GPS latitude
+            lng:
+              type: number
+              description: GPS longitude
+        batteryLevel:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Battery level percentage (optional; defaults to 100)
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the telemetry reading
+    IotWebhookBody:
+      description: >
+        Union of shipment-centric and sensor-centric IoT webhook payloads
+        (`IotWebhookBodySchema` in `iot.validation.ts`).
+      oneOf:
+        - $ref: '#/components/schemas/IotWebhookNormalizedPayload'
+        - $ref: '#/components/schemas/IotWebhookSensorPayload'
+    IotWebhookTelemetryData:
+      type: object
+      description: Persisted telemetry document returned in the 202 response `data` field
+      properties:
+        _id:
           type: string
         shipmentId:
           type: string
@@ -2965,6 +3243,147 @@ components:
           type: string
           format: date-time
 
+          description: Deterministic SHA-256 hash of the raw payload
+        anchorStatus:
+          type: string
+          enum: [PENDING_ANCHOR, ANCHORED, ANCHOR_FAILED]
+          description: Starts as PENDING_ANCHOR until the Stellar worker completes
+        stellarTxHash:
+          type: string
+          description: Present after successful anchoring on Stellar
+    IotWebhookAcceptedResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Telemetry received and queued for Stellar anchoring
+        data:
+          $ref: '#/components/schemas/IotWebhookTelemetryData'
+    StellarWebhookPayload:
+      type: object
+      required:
+        - id
+        - type
+        - paymentId
+        - transactionHash
+        - amount
+        - timestamp
+      properties:
+        id:
+          type: string
+          description: Unique Stellar webhook event identifier
+        type:
+          type: string
+          enum: [release, escrow, failed]
+          description: Stellar webhook event type
+        paymentId:
+          type: string
+          description: Payment identifier linked to the shipment
+        transactionHash:
+          type: string
+          description: Stellar transaction hash for the settlement event
+        amount:
+          type: number
+          description: Amount associated with the Stellar event
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp for the webhook event
+        signature:
+          type: string
+          description: Optional HMAC signature value for webhook verification
+    StellarWebhookResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Webhook processed successfully
+        data:
+          type: object
+          properties:
+            event:
+              type: string
+              enum: [release, escrow, failed]
+            paymentId:
+              type: string
+            status:
+              type: string
+              description: Resulting payment status (e.g. RELEASED, ESCROWED, FAILED)
+            transactionHash:
+              type: string
+              description: Present for release and escrow events
+    ActivityEvent:
+      type: object
+      required:
+        - _id
+        - userId
+        - action
+        - resource
+        - resourceId
+        - timestamp
+      properties:
+        _id:
+          type: string
+          description: MongoDB ObjectId of the audit log entry.
+        userId:
+          type: string
+          description: ID of the user who triggered the event, or "system" for automated events.
+        action:
+          type: string
+          description: The action that occurred.
+          enum:
+            - SHIPMENT_CREATED
+            - SHIPMENT_STATUS_CHANGED
+            - PROOF_UPLOADED
+            - DISPUTE_OPENED
+            - TELEMETRY_ANCHORED
+            - SETTLEMENT_RELEASED
+            - ANOMALY_DETECTED
+            - USER_INVITED
+            - RBAC_ROLE_MODIFIED
+            - API_KEY_GENERATED
+        resource:
+          type: string
+          description: The resource category affected.
+          enum:
+            - SHIPMENT
+            - TELEMETRY
+            - PAYMENT
+            - ANOMALY
+            - USER
+            - API_KEY
+        resourceId:
+          type: string
+          description: ID of the affected resource document.
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC timestamp when the event occurred.
+        metadata:
+          type: object
+          nullable: true
+          description: Action-specific contextual data (varies by action type).
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
     ShipmentTemplateFields:
       type: object
       properties:
@@ -3222,20 +3641,122 @@ components:
           format: date-time
     Shipment:
       type: object
+      description: >
+        Shipment resource returned by GET /api/shipments/:id (and list endpoints).
+        Includes frontend-contract fields from backend-integration-requirements.md §5.1.
+        Fields marked x-implemented: false are expected by the frontend but not yet
+        persisted on the Shipment model.
       properties:
+        _id:
+          type: string
+          description: MongoDB ObjectId of the shipment.
         trackingNumber:
           type: string
+          description: Unique tracking number for the shipment.
         origin:
           type: string
+          description: Human-readable origin address or location name.
         destination:
           type: string
+          description: Human-readable destination address or location name.
         enterpriseId:
           type: string
+          description: Organization ID of the enterprise customer.
         logisticsId:
           type: string
+          description: Organization ID of the logistics provider.
         status:
           type: string
           enum: [CREATED, PICKUP_CONFIRMED, IN_TRANSIT, CUSTOMS_CLEARED, OUT_FOR_DELIVERY, DELIVERED, SETTLEMENT_INITIATED, SETTLEMENT_COMPLETED, CANCELLED]
+          description: Current lifecycle status of the shipment.
+        priority:
+          type: string
+          enum: [URGENT, STANDARD, ECONOMY]
+          description: >
+            Shipment priority used for filtering and sorting on GET /api/shipments.
+            Implemented on the Shipment model (default STANDARD).
+          default: STANDARD
+          x-implemented: true
+        expectedDelivery:
+          type: string
+          format: date-time
+          description: >
+            Expected delivery timestamp. Implemented on the Shipment model and
+            available for sorting via sortBy=expectedDelivery.
+          x-implemented: true
+        originLat:
+          type: number
+          format: double
+          description: >
+            [TODO] Frontend-expected origin latitude. Not yet persisted on the
+            Shipment model — clients currently geocode `origin` as a fallback
+            (see backend-integration-requirements.md §5.1).
+          x-implemented: false
+        originLng:
+          type: number
+          format: double
+          description: >
+            [TODO] Frontend-expected origin longitude. Not yet persisted on the
+            Shipment model — clients currently geocode `origin` as a fallback
+            (see backend-integration-requirements.md §5.1).
+          x-implemented: false
+        destinationLat:
+          type: number
+          format: double
+          description: >
+            [TODO] Frontend-expected destination latitude. Not yet persisted on
+            the Shipment model — clients currently geocode `destination` as a
+            fallback (see backend-integration-requirements.md §5.1).
+          x-implemented: false
+        destinationLng:
+          type: number
+          format: double
+          description: >
+            [TODO] Frontend-expected destination longitude. Not yet persisted on
+            the Shipment model — clients currently geocode `destination` as a
+            fallback (see backend-integration-requirements.md §5.1).
+          x-implemented: false
+        isDelayed:
+          type: boolean
+          description: >
+            [TODO] Frontend-expected flag indicating the shipment is past its
+            expected delivery. Not yet computed or persisted on the Shipment
+            model (see backend-integration-requirements.md §5.1; related
+            analytics work tracked in #357).
+          x-implemented: false
+        stellarTokenId:
+          type: string
+          description: >
+            Stellar asset/token identifier assigned when the shipment is
+            tokenized on-chain. Set by tokenizeShipment during creation.
+          x-implemented: true
+        stellarTxHash:
+          type: string
+          description: >
+            Stellar transaction hash for the shipment tokenization (or related
+            on-chain) operation. Used for explorer links and ledger events.
+          x-implemented: true
+        deliveryProof:
+          type: object
+          nullable: true
+          description: >
+            Proof-of-delivery metadata uploaded via POST /api/shipments/:id/proof.
+            Null/omitted until proof has been submitted.
+          x-implemented: true
+          properties:
+            url:
+              type: string
+              description: URL of the uploaded proof image or document.
+            recipientSignatureName:
+              type: string
+              description: Name of the recipient who signed for delivery.
+            notes:
+              type: string
+              description: Optional notes attached to the proof upload.
+            uploadedAt:
+              type: string
+              format: date-time
+              description: When the proof was uploaded.
         milestones:
           type: array
           items:
@@ -3258,6 +3779,15 @@ components:
             $ref: '#/components/schemas/ShipmentPhoto'
         offChainMetadata:
           type: object
+          description: Optional key-value store for unstructured off-chain data.
+        createdAt:
+          type: string
+          format: date-time
+          description: Shipment creation timestamp (ISO 8601).
+        updatedAt:
+          type: string
+          format: date-time
+          description: Shipment last-update timestamp (ISO 8601).
     Organization:
       type: object
       properties:
@@ -3385,6 +3915,21 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token issued by `/api/auth/login`, `/api/auth/signup`, or `/api/auth/refresh`.
+        Send as `Authorization: Bearer <token>`.
+
+        **Claims (payload):**
+        - `userId` (string, required) — authenticated user ObjectId
+        - `role` (string, required) — one of `SUPER_ADMIN`, `ADMIN`, `MANAGER`, `VIEWER`, `CUSTOMER`
+        - `organizationId` (string, optional) — user's organization ObjectId
+        - `organizationType` (string, optional) — `ENTERPRISE` or `LOGISTICS`
+        - `jti` (string, required) — unique token id for revocation / logout
+        - `exp` / `iat` — standard JWT expiry and issued-at (7-day TTL)
+
+        Role permissions, frontend persona mapping, and the pending Driver alignment gap are
+        documented in `docs/auth-model.md`.
     apiKeyAuth:
       type: apiKey
       in: header

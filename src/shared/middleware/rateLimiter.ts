@@ -1,7 +1,10 @@
 import rateLimit, { type Store, type IncrementResponse } from 'express-rate-limit';
 import type { Request, Response } from 'express';
 import { sendResponse } from '../http/sendResponse.js';
+<<<<<<< HEAD
 import { logger } from '../logger/logger.js';
+=======
+>>>>>>> 19e9b7c (fix(testing): resolve missing socket mock exports in login-rate-limit.test.ts (#243))
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -149,6 +152,7 @@ const createRateLimitHandler = (message: string) => (req: Request, res: Response
     : Math.ceil(isDev ? 60 : 15 * 60);
 
   res.setHeader('Retry-After', String(retryAfter));
+
   sendResponse(res, 429, false, message, null, undefined, { retryAfter });
 };
 

@@ -28,7 +28,9 @@ export const createTemplateService = async (
  * @returns {Promise<IShipmentTemplate[]>} List of matching templates.
  */
 export const getTemplatesService = async (organizationId: string): Promise<IShipmentTemplate[]> => {
-  return ShipmentTemplate.find({ organizationId }).sort({ createdAt: -1 }).lean() as Promise<IShipmentTemplate[]>;
+  return ShipmentTemplate.find({ organizationId }).sort({ createdAt: -1 }).lean() as Promise<
+    IShipmentTemplate[]
+  >;
 };
 
 /**
