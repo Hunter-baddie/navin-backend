@@ -22,8 +22,7 @@ function extractQueryToken(queryToken: unknown): string | null {
  * EventSource in browsers often cannot send custom headers, so query-token auth is supported.
  */
 export const requireSseAuth: RequestHandler = async (req, res, next) => {
-  const token =
-    extractBearerToken(req.headers.authorization) ?? extractQueryToken(req.query.token);
+  const token = extractBearerToken(req.headers.authorization) ?? extractQueryToken(req.query.token);
 
   if (!token) {
     return next(

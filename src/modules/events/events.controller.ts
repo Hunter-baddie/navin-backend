@@ -1,8 +1,9 @@
 import type { RequestHandler } from 'express';
 
 import type { PollQuery } from './events.validation.js';
-import { pollEventsSince } from './events.service.js';
+import { pollEventsSince, subscribeUserToEvents } from './events.service.js';
 import { sendResponse } from '../../shared/http/sendResponse.js';
+import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
 /**
  * GET /api/events/poll
@@ -16,8 +17,7 @@ export const pollEventsController: RequestHandler = async (req, res) => {
   const { since } = req.query as unknown as PollQuery;
   const events = await pollEventsSince(since);
   sendResponse(res, 200, true, 'Events retrieved', events);
-import { AppError, ErrorCodes } from '../../shared/http/errors.js';
-import { subscribeUserToEvents } from './events.service.js';
+};
 
 /**
  * Streams Server-Sent Events for the authenticated user.
