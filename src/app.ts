@@ -21,6 +21,7 @@ import { healthRouter } from './modules/health/health.routes.js';
 import { usersRouter } from './modules/users/users.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { organizationsRouter } from './modules/organizations/organizations.routes.js';
+import { invitationsRouter } from './modules/invitations/invitations.routes.js';
 import { shipmentsRouter } from './modules/shipments/shipments.routes.js';
 import { paymentsRouter } from './modules/payments/payments.routes.js';
 import { webhooksRouter } from './modules/webhooks/iot.routes.js';
@@ -69,6 +70,7 @@ export function buildApp() {
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/organizations', organizationsRouter);
+  app.use('/api/company/invitations', invitationsRouter);
   app.use('/api/shipments', shipmentsRouter);
   app.use('/api/payments', paymentsRouter);
   app.use('/api/settlements', paymentsRouter);

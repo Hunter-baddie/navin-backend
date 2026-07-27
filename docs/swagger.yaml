@@ -742,6 +742,314 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/company/invitations:
+    post:
+      summary: Create and send invitation
+      description: Send an invitation to a new team member (requires ADMIN role).
+      security:
+        - bearerAuth: []
+      tags:
+        - Invitations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - role
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Email address to invite
+                role:
+                  type: string
+                  enum:
+                    - ADMIN
+                    - MANAGER
+                    - DRIVER
+                    - VIEWER
+                    - CUSTOMER
+                  description: Role to assign to invitee
+                message:
+                  type: string
+                  description: Optional custom message in invitation
+      responses:
+        '201':
+          description: Invitation sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: Invitation ID
+                      token:
+                        type: string
+                        description: Invitation token for frontend
+                      email:
+                        type: string
+                      expiresAt:
+                        type: string
+                        format: date-time
+        '409':
+          description: Email already in use or invitation already pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: List organization invitations
+      description: Get all invitations for the organization (requires ADMIN role).
+      security:
+        - bearerAuth: []
+      tags:
+        - Invitations
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: cursor
+          schema:
+            type: string
+          description: Cursor for pagination
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum:
+              - PENDING
+              - ACCEPTED
+              - EXPIRED
+              - REVOKED
+          description: Filter by invitation status
+      responses:
+        '200':
+          description: Invitations retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        email:
+                          type: string
+                        role:
+                          type: string
+                        status:
+                          type: string
+                        expiresAt:
+                          type: string
+                          format: date-time
+                        createdAt:
+                          type: string
+                          format: date-time
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      hasMore:
+                        type: boolean
+                      nextCursor:
+                        type: string
+  /api/company/invitations/{id}/resend:
+    post:
+      summary: Resend invitation
+      description: Resend an invitation with a new token and refresh expiry (requires ADMIN role).
+      security:
+        - bearerAuth: []
+      tags:
+        - Invitations
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Invitation ID
+      responses:
+        '200':
+          description: Invitation resent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      token:
+                        type: string
+                      expiresAt:
+                        type: string
+                        format: date-time
+  /api/company/invitations/{id}:
+    delete:
+      summary: Revoke invitation
+      description: Revoke an invitation preventing further acceptance (requires ADMIN role).
+      security:
+        - bearerAuth: []
+      tags:
+        - Invitations
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Invitation ID
+      responses:
+        '200':
+          description: Invitation revoked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+  /api/company/invitations/info:
+    get:
+      summary: Get invitation info from token
+      description: Get invitation details without authentication (public endpoint).
+      security: []
+      tags:
+        - Invitations
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+          description: Invitation token
+      responses:
+        '200':
+          description: Invitation info retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      invitationId:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                      companyName:
+                        type: string
+                      expiresAt:
+                        type: string
+                        format: date-time
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/company/invitations/accept:
+    post:
+      summary: Accept invitation and create account
+      description: Accept an invitation and create a user account (public endpoint).
+      security: []
+      tags:
+        - Invitations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - name
+                - password
+              properties:
+                token:
+                  type: string
+                  description: Invitation token
+                name:
+                  type: string
+                  description: User display name
+                password:
+                  type: string
+                  minLength: 8
+                  description: User password
+      responses:
+        '201':
+          description: Invitation accepted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          email:
+                            type: string
+                          name:
+                            type: string
+                          role:
+                            type: string
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/audit-logs:
     get:
       summary: Retrieve compliance audit logs
