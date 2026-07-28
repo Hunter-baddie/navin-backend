@@ -20,6 +20,10 @@ export interface IUser {
   role: UserRole;
   organizationId: string;
   walletAddress?: string;
+  phone?: string;
+  phoneVerified?: boolean;
+  twoFactorSecret?: string;
+  twoFactorEnabled?: boolean;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;

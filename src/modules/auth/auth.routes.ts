@@ -22,6 +22,7 @@ import {
   resetPasswordController,
   refreshController,
   registerCompanyController,
+  setup2faController,
 } from './auth.controller.js';
 import {
   createApiKeyController,
@@ -39,6 +40,8 @@ import {
   disable2faController,
   regenerateBackupCodesController,
 } from './twoFactor.controller.js';
+import { listSessionsController, revokeSessionController } from './session.controller.js';
+import { SessionJtiParamSchema } from './session.validation.js';
 
 export const authRouter = Router();
 
@@ -76,6 +79,9 @@ authRouter.post(
   validateRequest({ body: ResetPasswordBodySchema }),
   asyncHandler(resetPasswordController)
 );
+
+// 2FA setup (protected by JWT auth)
+authRouter.post('/2fa/setup', asyncHandler(requireAuth), asyncHandler(setup2faController));
 
 // API Key management routes (protected by JWT auth + admin role)
 authRouter.post(
@@ -126,4 +132,11 @@ authRouter.post(
   '/2fa/backup-codes/regenerate',
   asyncHandler(requireAuth),
   asyncHandler(regenerateBackupCodesController)
+// Session management routes (protected by JWT auth)
+authRouter.get('/sessions', asyncHandler(requireAuth), asyncHandler(listSessionsController));
+authRouter.delete(
+  '/sessions/:jti',
+  asyncHandler(requireAuth),
+  validateRequest({ params: SessionJtiParamSchema }),
+  asyncHandler(revokeSessionController)
 );

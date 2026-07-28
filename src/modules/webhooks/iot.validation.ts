@@ -10,6 +10,8 @@ const normalizedTelemetrySchema = z
     longitude: z.coerce.number(),
     batteryLevel: z.coerce.number().min(0).max(100).optional(),
     timestamp: z.coerce.date(),
+    shockMagnitude: z.coerce.number().min(0).optional(),
+    gpsLost: z.boolean().optional(),
   })
   .strict();
 
@@ -26,6 +28,8 @@ const sensorTelemetrySchema = z
       .strict(),
     batteryLevel: z.coerce.number().min(0).max(100).optional(),
     timestamp: z.coerce.date(),
+    shockMagnitude: z.coerce.number().min(0).optional(),
+    gpsLost: z.boolean().optional(),
   })
   .strict();
 

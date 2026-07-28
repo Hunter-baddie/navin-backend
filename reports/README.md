@@ -1,8 +1,37 @@
-# API surface coverage reports
+# Reports
+
+This folder contains dashboards and tooling for monitoring the Navin backend.
+
+## Roadmap Dashboard
+
+A visual tracking dashboard for the 60-issue wave progress.
+
+### Generate the roadmap
+
+From the repository root:
+
+```bash
+node reports/generate-roadmap.js
+```
+
+This reads from `issues-data.json` and generates [`ROADMAP_DASHBOARD.html`](./ROADMAP_DASHBOARD.html).
+
+The dashboard displays:
+- **Tier Distribution** — Donut chart of Easy/Medium/Hard issue counts
+- **Completion Status** — Progress bar showing Open vs Closed with percentage
+- **Domain Breakdown** — Stacked bar chart by module (API-QA, Auth, Users, Shipments, Payments, Telemetry, WebSockets)
+- **Hard Issues Hot-List** — Top 10 Hard-tier issues by domain
+- **Summary Grid** — Quick counts and issue range coverage (#325–#390)
+
+All charts render with inline SVG and CSS—no external CDN dependencies.
+
+---
+
+## API Surface Coverage Reports
 
 This folder holds tooling that detects **drift** between the OpenAPI document (`docs/swagger.yaml`) and the live Express route table (`src/app.ts` mounts + `src/modules/**/*.routes.ts` handlers).
 
-## Generate the HTML report
+### Generate the coverage report
 
 From the repository root:
 
