@@ -46,4 +46,5 @@ export const config = {
   sorobanRpcUrl: env.SOROBAN_RPC_URL,
   escrowContractId: env.ESCROW_CONTRACT_ID,
   sentryDsn: env.SENTRY_DSN,
+  totpEncryptionKey: env.TOTP_ENCRYPTION_KEY,
 } as const;

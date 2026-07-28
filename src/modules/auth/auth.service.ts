@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
+import { generateSecret as totpGenerateSecret, generateURI as totpGenerateURI } from 'otplib';
+import QRCode from 'qrcode';
 import { AppError } from '../../shared/http/errors.js';
 import { env } from '../../env.js';
 import { config } from '../../config/index.js';
@@ -11,6 +13,7 @@ import { createSession } from './session.service.js';
 import type { SignupInput, LoginInput } from './auth.validation.js';
 import { logger } from '../../shared/logger/logger.js';
 import { sendEmail, resetPasswordEmailHtml } from '../../services/email.service.js';
+import { encryptSecret } from './totp.utils.js';
 
 export interface TokenPayload {
   userId: string;
@@ -420,4 +423,48 @@ export async function registerCompany(input: {
   } finally {
     await session.endSession();
   }
+}
+
+/**
+ * Generates a TOTP secret for the authenticated user, encrypts it, persists it to
+ * the database, and returns an `otpauth://` QR code data URL for scanning with an
+ * authenticator app (Google Authenticator, Authy, etc.).
+ *
+ * IMPORTANT: This call does NOT enable 2FA.  `twoFactorEnabled` remains `false` until
+ * the user proves they can produce a valid TOTP code (see the upcoming verify endpoint).
+ *
+ * @param userId - The authenticated user's ID (from `req.user.userId`).
+ * @returns `{ qrCodeUrl }` — base64 PNG data URL suitable for an `<img>` tag.
+ * @throws {AppError} 401 when the user no longer exists.
+ */
+export async function setup2fa(userId: string): Promise<{ qrCodeUrl: string }> {
+  const user = await UserModel.findById(userId).select('+twoFactorSecret').lean();
+  if (!user || user.deletedAt) {
+    throw new AppError(401, 'User not found', 'ERR_AUTH_INVALID');
+  }
+
+  // Generate a new base32 TOTP secret (20-byte / 160-bit entropy).
+  const secret = totpGenerateSecret();
+
+  // Build the otpauth:// URI that authenticator apps parse when scanning the QR code.
+  const otpauthUrl = totpGenerateURI({
+    label: (user as { email: string }).email,
+    issuer: 'Navin',
+    secret,
+    strategy: 'totp',
+  } as Parameters<typeof totpGenerateURI>[0]);
+
+  // Encrypt before storing — secret is NEVER saved in plaintext.
+  const encryptedSecret = encryptSecret(secret);
+
+  // Persist the encrypted secret; leave twoFactorEnabled = false until verified.
+  await UserModel.findByIdAndUpdate(userId, {
+    twoFactorSecret: encryptedSecret,
+    twoFactorEnabled: false,
+  });
+
+  // Render the otpauth:// URI as a base64 PNG data URL.
+  const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);
+
+  return { qrCodeUrl };
 }

@@ -67,6 +67,15 @@ const EnvSchema = z.object({
 
   // Frontend
   FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').default('http://localhost:3000'),
+
+  // TOTP 2FA — AES-256 encryption key for TOTP secrets stored in MongoDB.
+  // Must be exactly 32 bytes (64 hex characters). Generate with:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  TOTP_ENCRYPTION_KEY: z
+    .string()
+    .trim()
+    .regex(/^[0-9a-fA-F]{64}$/, 'TOTP_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)')
+    .optional(),
 });
 
 const parsedEnv = EnvSchema.safeParse(process.env);
