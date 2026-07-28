@@ -1,7 +1,13 @@
 import { Shipment } from './shipments.model.js';
 import type { FilterQuery } from 'mongoose';
 import { tokenizeShipment, releaseEscrow } from '../../services/stellar.service.js';
-import { mockUploadToStorage } from '../../services/mockStorageService.js';
+import { uploadFileToStorage, deleteFileFromStorage } from '../../services/storage/upload.js';
+import {
+  generateProofKey,
+  generateDocumentKey,
+  generatePhotoKey,
+  generateDisputeEvidenceKey,
+} from '../../services/storage/keyGenerator.js';
 import { UserModel } from '../users/users.model.js';
 import { emitStatusUpdate } from '../../infra/socket/io.js';
 import { Anomaly } from '../anomaly/anomaly.model.js';
@@ -704,8 +710,12 @@ export const uploadShipmentProofService = async (
   let proofUrl: string;
 
   try {
-    proofUrl = await mockUploadToStorage(file);
-  } catch {
+    const key = generateProofKey(id, file.originalname);
+    proofUrl = await uploadFileToStorage(file.buffer, file.mimetype, key);
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError(
       503,
       'Storage bucket unavailable, please try again later.',
@@ -774,8 +784,12 @@ export const createDisputeService = async (
 
   if (file) {
     try {
-      evidenceUrl = await mockUploadToStorage(file);
-    } catch {
+      const key = generateDisputeEvidenceKey(id, `dispute-${Date.now()}`, file.originalname);
+      evidenceUrl = await uploadFileToStorage(file.buffer, file.mimetype, key);
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       throw new AppError(
         503,
         'Storage bucket unavailable, please try again later.',
@@ -845,8 +859,12 @@ export const uploadShipmentDocumentService = async (
   let fileUrl: string;
 
   try {
-    fileUrl = await mockUploadToStorage(file);
-  } catch {
+    const key = generateDocumentKey(id, docType, file.originalname);
+    fileUrl = await uploadFileToStorage(file.buffer, file.mimetype, key);
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError(
       503,
       'Storage bucket unavailable, please try again later.',
@@ -884,8 +902,12 @@ export const uploadShipmentPhotoService = async (
   let fileUrl: string;
 
   try {
-    fileUrl = await mockUploadToStorage(file);
-  } catch {
+    const key = generatePhotoKey(id, file.originalname);
+    fileUrl = await uploadFileToStorage(file.buffer, file.mimetype, key);
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError(
       503,
       'Storage bucket unavailable, please try again later.',
