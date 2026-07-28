@@ -21,7 +21,11 @@ import { sendResponse } from '../../shared/http/sendResponse.js';
  * @throws {AppError} 409 EMAIL_TAKEN — when the email is already registered.
  */
 export const signupController: RequestHandler = async (req, res) => {
-  const result = await signup(req.body);
+  const ctx = {
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+  };
+  const result = await signup(req.body, ctx);
   sendResponse(res, 201, true, 'Account created successfully', result);
 };
 
@@ -34,7 +38,11 @@ export const signupController: RequestHandler = async (req, res) => {
  * @throws {AppError} 401 INVALID_CREDENTIALS — when email or password is incorrect.
  */
 export const loginController: RequestHandler = async (req, res) => {
-  const result = await login(req.body);
+  const ctx = {
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+  };
+  const result = await login(req.body, ctx);
   sendResponse(res, 200, true, 'Login successful', result);
 };
 

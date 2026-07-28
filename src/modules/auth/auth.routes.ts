@@ -31,6 +31,8 @@ import {
   CreateApiKeyBodySchema,
   OrganizationIdParamSchema,
 } from './apiKey.validation.js';
+import { listSessionsController, revokeSessionController } from './session.controller.js';
+import { SessionJtiParamSchema } from './session.validation.js';
 
 export const authRouter = Router();
 
@@ -90,4 +92,13 @@ authRouter.delete(
   requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validateRequest({ params: ApiKeyIdParamSchema }),
   asyncHandler(revokeApiKeyController)
+);
+
+// Session management routes (protected by JWT auth)
+authRouter.get('/sessions', asyncHandler(requireAuth), asyncHandler(listSessionsController));
+authRouter.delete(
+  '/sessions/:jti',
+  asyncHandler(requireAuth),
+  validateRequest({ params: SessionJtiParamSchema }),
+  asyncHandler(revokeSessionController)
 );
