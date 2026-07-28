@@ -27,4 +27,8 @@ export interface IUser {
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  // TOTP 2FA fields
+  totpSecret?: string | null;
+  totpEnabled: boolean;
+  totpBackupCodes: string[];
 }
