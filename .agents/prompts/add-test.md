@@ -8,7 +8,7 @@ An endpoint exists but lacks complete test coverage (200 · 401 · 403 · 400).
 1. **Read** the route file to understand the auth/role/validation chain.
 2. **Read** the controller and service to understand the happy-path response shape.
 3. **Read** an existing test in the same module to copy the setup pattern (mock imports, DB seeding, auth headers).
-4. **Use fixtures** — Import factory functions from `tests/fixtures/factories.ts` for test data. Never invent ad-hoc mock shapes.
+4. **Use fixtures** — Import factory functions from `tests/fixtures/factories.ts` for test data. Avoid inventing ad-hoc mock shapes.
 5. **Write tests** covering:
    - **200 happy path** — assert response envelope shape (`success`, `message`, `data`, optional `meta`).
    - **401 unauth** — missing or invalid token.

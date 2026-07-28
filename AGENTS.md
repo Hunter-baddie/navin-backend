@@ -127,19 +127,19 @@ Modules are self-contained under `src/modules/<domain>/`. Cross-module imports a
 - Never create circular dependencies. If two modules need to coordinate, extract shared logic into `src/shared/` or use events.
 - When adding a new cross-module dependency, document it here and in the consumer module's `AGENTS.md`.
 
-## 10. Maintaining AI-Native Documentation
+## 10. Reviewing & Updating Agent Documentation
 
-These instructions are **living documents**. They must be updated whenever conventions change so agents and developers never work from stale guidance.
+These instructions are **guidance**, not immutable rules. They should be reviewed and updated **manually** when conventions evolve so agents and developers do not work from stale guidance. Treat the tables below as a checklist for the PR author or reviewer, not as an automated trigger.
 
-### When to update
+### When to consider an update
 
-| Change | Files to update |
-|--------|----------------|
+| Change | Review these files |
+|--------|------------------|
 | New module added | Root `AGENTS.md` § Architecture Boundaries; create `src/modules/<domain>/AGENTS.md` from `__template__` |
-| Convention changed (e.g., new error-code pattern) | Root `AGENTS.md` § Conventions; update all affected module `AGENTS.md` files |
-| File added/removed/renamed in a module | That module's `AGENTS.md` |
+| Convention changed (e.g., new error-code pattern) | Root `AGENTS.md` § Conventions; affected module `AGENTS.md` files |
+| File added/removed/renamed in a module | That module's `AGENTS.md` — only if the structural pattern changes |
 | New cross-module dependency introduced | Root `AGENTS.md` § Architecture Boundaries; consumer module's `AGENTS.md` |
-| New shared utility or middleware | Root `AGENTS.md` § Architecture; update `src/shared/` README if present |
+| New shared utility or middleware | Root `AGENTS.md` § Architecture; `src/shared/` docs if present |
 | Prompt template no longer accurate | `.agents/prompts/*.md` |
 
 ### Pre-Commit Checklist (extended)
@@ -149,7 +149,7 @@ These instructions are **living documents**. They must be updated whenever conve
 - [ ] No `...rest` spread into DB queries · No duplicate imports/declarations
 - [ ] Zod schemas export inferred types · Models use `isoDatePlugin` + soft-delete
 - [ ] Swagger updated · `npm run build` passes · `npm test` passes
-- [ ] **AGENTS.md updated if conventions, boundaries, or module structure changed**
+- [ ] **AGENTS.md reviewed if conventions, boundaries, or module structure changed**
 
 ### Token Efficiency
 - Read before writing. Batch parallel reads. Cite file:line.

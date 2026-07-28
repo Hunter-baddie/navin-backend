@@ -1,11 +1,11 @@
 # Prompt: Review a PR against conventions
 
 ## Context
-You are reviewing a pull request for the Navin backend. You must verify it follows all hard rules from `AGENTS.md`.
+You are reviewing a pull request for the Navin backend. You must verify it follows the hard rules from `AGENTS.md`.
 
 ## Instructions
 
-1. **Read the diff** — Focus on new/modified files. Ignore unchanged files.
+1. **Read the diff** — Focus on new/modified files.
 2. **Check conventions** for every modified controller, service, route, model, and validation file:
    - [ ] Controllers use `sendResponse()` — no `res.json()` or `res.send()`.
    - [ ] Controllers have no `try/catch`.
@@ -19,11 +19,11 @@ You are reviewing a pull request for the Navin backend. You must verify it follo
    - [ ] No `...rest` spread from `req.query` into DB queries.
    - [ ] Imports end with `.js`; `import type` for type-only.
    - [ ] One declaration per identifier per file.
-3. **Check architecture boundaries** — Does the PR introduce a new cross-module dependency? If so, is it documented in root `AGENTS.md` § Architecture Boundaries?
-4. **Check documentation** — Is `docs/swagger.yaml` updated for every endpoint change? Is JSDoc present on new controllers?
+3. **Check architecture boundaries** — Does the PR introduce a new cross-module dependency? If so, is it documented in root `AGENTS.md`?
+4. **Check documentation** — Is `docs/swagger.yaml` updated? Is JSDoc present on new controllers?
 5. **Check tests** — Does the PR include tests for 200 · 401 · 403 · 400?
-6. **Check AGENTS.md updates** — If the PR changes a convention or adds/removes files in a module, is the relevant `AGENTS.md` updated?
-7. **Leave actionable feedback** — Cite file:line for each issue. Suggest the fix, do not just state the problem.
+6. **Check docs updates** — If the PR changes a convention or adds/removes files in a module, is the relevant `AGENTS.md` updated?
+7. **Leave actionable feedback** — Cite file:line for each issue. Suggest the fix.
 
 ## Output format
 Return a pass/fail summary with a table: File | Issue | Severity (block / warn) | Suggested fix. If no issues, state "LGTM — all hard rules satisfied."

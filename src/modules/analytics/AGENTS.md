@@ -2,20 +2,22 @@
 
 > Route prefix: `/api/analytics`
 
-## Files
+## Structure Pattern
 
-| File | Purpose |
-|------|---------|
-| `analytics.routes.ts` | Express router wiring: auth → role → Zod → controller |
-| `analytics.controller.ts` | Thin handlers: extract req, call service, `sendResponse()` |
-| `analytics.service.ts` | Business logic: throw `AppError`, return plain objects |
-| `analytics.model.ts` | Mongoose schema: `isoDatePlugin`, `deletedAt`, soft-delete pre-hooks |
-| `analytics.validation.ts` | Zod schemas + exported inferred types |
-| `analytics.test.ts` | Jest tests: 200 · 401 · 403 · 400 |
+Modules follow a consistent layout. Expect these file kinds (exact names may vary):
+
+| Pattern | Purpose |
+|---------|---------|
+| **Routes** | Express router wiring: `requireAuth` → `requireRole` → `validateRequest(Zod)` → `asyncHandler(controller)` |
+| **Controller** | Thin handlers: extract request fields, call service, return via `sendResponse()`. No `try/catch`. |
+| **Service** | Business logic: throw `AppError`, return plain objects (never Mongoose Documents). |
+| **Model** | Mongoose schema: `isoDatePlugin`, `deletedAt` field, soft-delete pre-hooks. |
+| **Validation** | Zod schemas for `body` / `query` / `params`. Export inferred types (`export type X = z.infer<typeof XSchema>`). |
+| **Tests** | Jest + Supertest: 200 happy · 401 unauth · 403 role · 400 validation. |
 
 ## Domain-Specific Error Codes
 
-None (uses generic codes from shared/http/errors.ts)
+Error codes follow the `ERR_ANALYTICS_<DESC>` pattern and are registered in `src/shared/http/errors.ts`. Search that file for codes belonging to this domain.
 
 ## Cross-Module Dependencies
 
@@ -24,12 +26,11 @@ None — this module only imports from `src/shared/` and `src/infra/`.
 ## Conventions Reminder
 
 - All routes protected by `requireAuth` + `requireRole` unless marked `// PUBLIC: <reason>`.
-- Zod schemas export inferred types (e.g. `export type X = z.infer<typeof XSchema>`).
+- Zod schemas export inferred types.
 - Services return plain interfaces, never Mongoose Documents.
 - Models use `isoDatePlugin` and soft-delete pre-hooks.
 - See root `AGENTS.md` for full hard rules.
 
-
 ## Maintenance
 
-When you add, remove, or rename files in this module, or change its cross-module dependencies, update this `AGENTS.md` in the same PR. See root `AGENTS.md` § 10 for the full maintenance policy.
+This file should be reviewed and updated **manually** when the module's conventions or dependencies change. Do not auto-generate or auto-update without human review. See root `AGENTS.md` § 10 for guidance on when to update.
