@@ -65,6 +65,8 @@ export function buildApp() {
   app.use('/api/auth/signup', strictLimiter);
   app.use('/api/auth/forgot-password', otpLimiter);
   app.use('/api/auth/reset-password', otpLimiter);
+  app.use('/api/auth/2fa/verify', otpLimiter);
+  app.use('/api/auth/2fa/backup-codes/regenerate', strictLimiter);
 
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);

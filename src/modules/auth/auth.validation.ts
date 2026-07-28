@@ -88,3 +88,27 @@ export type ForgotPasswordInput = z.infer<typeof ForgotPasswordBodySchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordBodySchema>;
 export type RefreshInput = z.infer<typeof RefreshBodySchema>;
 export type RegisterCompanyInput = z.infer<typeof RegisterCompanyBodySchema>;
+
+// ── 2FA / TOTP schemas ────────────────────────────────────────────────────────
+
+/**
+ * Body schema for `POST /api/auth/2fa/verify`.
+ * The 6-digit TOTP code from the authenticator app.
+ */
+export const Verify2faBodySchema = z.object({
+  code: z
+    .string()
+    .length(6, 'TOTP code must be exactly 6 digits')
+    .regex(/^\d{6}$/, 'TOTP code must contain only digits'),
+});
+
+/**
+ * Body schema for `DELETE /api/auth/2fa`.
+ * Current password required to confirm ownership before disabling 2FA.
+ */
+export const Disable2faBodySchema = z.object({
+  password: z.string().min(1, 'Password is required'),
+});
+
+export type Verify2faInput = z.infer<typeof Verify2faBodySchema>;
+export type Disable2faInput = z.infer<typeof Disable2faBodySchema>;
