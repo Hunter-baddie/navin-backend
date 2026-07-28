@@ -12,3 +12,4 @@ export const NotificationIdParamSchema = z.object({
 });
 
 export type GetNotificationsQuery = z.infer<typeof GetNotificationsQuerySchema>;
+export type NotificationIdParam = z.infer<typeof NotificationIdParamSchema>;

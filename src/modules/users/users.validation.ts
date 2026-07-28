@@ -66,4 +66,8 @@ export const ListUsersQuerySchema = z
   })
   .strict();
 
+export type CreateUserBody = z.infer<typeof CreateUserBodySchema>;
+export type CreateInvitationBody = z.infer<typeof CreateInvitationBodySchema>;
+export type VerifyInvitationQuery = z.infer<typeof VerifyInvitationQuerySchema>;
+export type AcceptInvitationBody = z.infer<typeof AcceptInvitationBodySchema>;
 export type ListUsersQuery = z.infer<typeof ListUsersQuerySchema>;

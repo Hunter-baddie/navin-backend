@@ -115,6 +115,8 @@ export const ShipmentIdParamSchema = z.object({
   id: z.string().min(1),
 });
 
+export type ShipmentIdParam = z.infer<typeof ShipmentIdParamSchema>;
+
 /**
  * Body schema for `PATCH /api/shipments/:id`.
  *
@@ -124,6 +126,8 @@ export const ShipmentIdParamSchema = z.object({
 export const ShipmentPatchBodySchema = z.object({
   offChainMetadata: z.record(z.unknown()).optional(),
 });
+
+export type ShipmentPatchBody = z.infer<typeof ShipmentPatchBodySchema>;
 
 /**
  * Body schema for `PATCH /api/shipments/:id/status`.
@@ -149,6 +153,8 @@ export const ShipmentProofBodySchema = z.object({
   notes: z.string().optional(),
 });
 
+export type ShipmentProofBody = z.infer<typeof ShipmentProofBodySchema>;
+
 /**
  * Body schema for `POST /api/shipments/:id/disputes`.
  *
@@ -159,6 +165,8 @@ export const CreateDisputeBodySchema = z.object({
   type: z.enum(['WRONG_GOODS', 'DAMAGED', 'NOT_DELIVERED', 'PAYMENT_DISAGREEMENT', 'OTHER']),
   description: z.string().min(1),
 });
+
+export type CreateDisputeBody = z.infer<typeof CreateDisputeBodySchema>;
 
 /**
  * Query schema for `GET /api/shipments/:id/timeline`.
@@ -193,6 +201,8 @@ export const UploadDocumentBodySchema = z.object({
   ]),
 });
 
+export type UploadDocumentBody = z.infer<typeof UploadDocumentBodySchema>;
+
 /**
  * Body schema for `POST /api/shipments/:id/photos`.
  *
@@ -202,6 +212,8 @@ export const UploadDocumentBodySchema = z.object({
 export const UploadPhotoBodySchema = z.object({
   caption: z.string().max(500).optional(),
 });
+
+export type UploadPhotoBody = z.infer<typeof UploadPhotoBodySchema>;
 
 /**
  * Query schema for `GET /api/shipments/export`.

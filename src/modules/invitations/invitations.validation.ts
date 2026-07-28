@@ -34,6 +34,8 @@ export const InvitationIdParamSchema = z.object({
   id: z.string().min(1),
 });
 
+export type InvitationIdParam = z.infer<typeof InvitationIdParamSchema>;
+
 /**
  * Body schema for `POST /api/company/invitations/accept`.
  * Accept an invitation and create user account.

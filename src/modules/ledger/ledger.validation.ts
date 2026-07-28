@@ -5,6 +5,8 @@ export const LedgerBlockIdParamSchema = z.object({
   id: z.string().min(1),
 });
 
+export type LedgerBlockIdParam = z.infer<typeof LedgerBlockIdParamSchema>;
+
 export const GetLedgerBlocksQuerySchema = z.object({
   shipmentId: z.string().min(1).optional(),
   milestoneEvent: z.nativeEnum(MilestoneEvent).optional(),

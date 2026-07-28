@@ -103,6 +103,54 @@ Treat violations as hard errors. Stop and fix.
 - [ ] Zod schemas export inferred types · Models use `isoDatePlugin` + soft-delete
 - [ ] Swagger updated · `npm run build` passes · `npm test` passes
 
+## 9. Architecture Boundaries
+
+Modules are self-contained under `src/modules/<domain>/`. Cross-module imports are allowed **only** along these directions to prevent circular dependencies and tight coupling:
+
+| Consumer | Allowed Dependencies |
+|----------|---------------------|
+| `auth` | `users` |
+| `invitations` | `users` |
+| `ledger` | `shipments` (via shared types) |
+| `payments` | `shipments` (via model refs) |
+| `shipments` | `payments` (for dispute/settlement hooks) |
+| `telemetry` | `shipments` (via model refs) |
+| `users` | `organizations` |
+| `webhooks` | `shipments`, `telemetry` |
+| `analytics` | `shipments`, `payments` |
+| `events` | `infra/redis` |
+| `notifications` | `users` (for preferences) |
+
+**Rules:**
+- Prefer domain events (Redis pub/sub, webhooks) over direct service calls between modules.
+- Never import a sibling module's controller.
+- Never create circular dependencies. If two modules need to coordinate, extract shared logic into `src/shared/` or use events.
+- When adding a new cross-module dependency, document it here and in the consumer module's `AGENTS.md`.
+
+## 10. Maintaining AI-Native Documentation
+
+These instructions are **living documents**. They must be updated whenever conventions change so agents and developers never work from stale guidance.
+
+### When to update
+
+| Change | Files to update |
+|--------|----------------|
+| New module added | Root `AGENTS.md` § Architecture Boundaries; create `src/modules/<domain>/AGENTS.md` from `__template__` |
+| Convention changed (e.g., new error-code pattern) | Root `AGENTS.md` § Conventions; update all affected module `AGENTS.md` files |
+| File added/removed/renamed in a module | That module's `AGENTS.md` |
+| New cross-module dependency introduced | Root `AGENTS.md` § Architecture Boundaries; consumer module's `AGENTS.md` |
+| New shared utility or middleware | Root `AGENTS.md` § Architecture; update `src/shared/` README if present |
+| Prompt template no longer accurate | `.agents/prompts/*.md` |
+
+### Pre-Commit Checklist (extended)
+- [ ] No `any` · No `console.*` · No `try/catch` in controllers
+- [ ] No `res.json()` (use `sendResponse`) · No `new Error()` (use `AppError`)
+- [ ] `requireAuth` on all routes (or `// PUBLIC: <reason>`)
+- [ ] No `...rest` spread into DB queries · No duplicate imports/declarations
+- [ ] Zod schemas export inferred types · Models use `isoDatePlugin` + soft-delete
+- [ ] Swagger updated · `npm run build` passes · `npm test` passes
+- [ ] **AGENTS.md updated if conventions, boundaries, or module structure changed**
+
 ### Token Efficiency
 - Read before writing. Batch parallel reads. Cite file:line.
 - Minimal diffs — don't rewrite files for one-line fixes.
