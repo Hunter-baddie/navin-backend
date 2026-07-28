@@ -1,23 +1,11 @@
 # Navin Backend — AI Agent Instructions
 
-## 1. Overview & Stack
-
-Logistics/supply-chain API: shipments, org roles, telemetry, Stellar blockchain (proof-of-delivery, escrow).
-
-| Layer | Tech |
-|-------|------|
-| Language | TypeScript Strict |
-| Framework | Express.js |
-| DB | MongoDB / Mongoose |
-| Validation | Zod (all payloads) |
-| Auth | JWT + Redis blocklist |
-| Blockchain | Stellar SDK |
-| Testing | Jest + Supertest |
-| Lint | Prettier + ESLint |
+## 1. Overview
+Logistics/supply-chain API (shipments, org roles, telemetry, Stellar blockchain).
+Stack: TypeScript Strict · Express · MongoDB/Mongoose · Zod · JWT+Redis · Jest+Supertest.
 
 ## 2. Architecture
-
-**Flow:** `Route → validateRequest(Zod) → requireAuth → requireRole → asyncHandler(Controller) → Service → Model/Repo`
+Flow: `Route → validateRequest(Zod) → requireAuth → requireRole → asyncHandler(Controller) → Service → Model/Repo`
 
 | Directory | Purpose |
 |-----------|---------|
@@ -28,65 +16,22 @@ Logistics/supply-chain API: shipments, org roles, telemetry, Stellar blockchain 
 | `tests/` | Integration + API tests |
 
 ## 3. Conventions (Hard Rules)
+- **Response envelope:** `{ success, message, data, meta? }`. Use `sendResponse()` exclusively. Dates → ISO 8601 UTC.
+- **Errors:** Controllers NO `try/catch` (use `asyncHandler`). Services throw `AppError(status, msg, code)`. Codes: `ERR_<DOMAIN>_<DESC>` registered in `src/shared/http/errors.ts`.
+- **Types:** NO `any` (use `unknown`). Services return plain interfaces, not Mongoose Documents. One declaration per identifier per file. `import type` for type-only. Paths end `.js`.
+- **Security:** All routes `requireAuth` + `requireRole` unless `// PUBLIC: <reason>`. Strip `passwordHash` in `toJSON`. No `...rest` spread from `req.query` into DB queries. No `console.*` — use `logger`.
+- **Database:** Soft deletes via `deletedAt`. Models use `isoDatePlugin` + soft-delete pre-hooks. Zod validates requests; Mongoose validates data integrity.
 
-### Response Envelope
-```
-{ success: bool, message: string, data: T | null, meta?: { cursor, hasMore, total } }
-```
-- Dates → ISO 8601 UTC. Pagination → `meta` only. Use `sendResponse()` exclusively.
+## 4. Testing & Documentation
+- Every endpoint needs tests: **200** · **401** · **403** · **400/422**. Mock externals. Run `npm test`.
+- Update `docs/swagger.yaml` for every endpoint change.
 
-### Error Handling
-- Controllers: NO `try/catch`. Wrap in `asyncHandler`. Throw `AppError(status, msg, code)`.
-- Services: throw `AppError` — never `new Error()`.
-- Error codes: `ERR_<DOMAIN>_<DESC>` (registered in `src/shared/http/errors.ts`).
+## 5. Agent Skills Pipeline (run in order)
+1. **Cross-Check** — `.agents/skills/cross-check/SKILL.md` (Route↔Controller↔Service↔Model↔Zod↔Swagger)
+2. **Cleanup** — `.agents/skills/cleanup/SKILL.md` (duplicates, conventions, security, `any`)
+3. **Document** — `.agents/skills/document/SKILL.md` (Swagger, JSDoc, error codes)
 
-### Types & Imports
-- NO `any` (use `unknown`). Services return plain interfaces, not Mongoose Documents.
-- One declaration per identifier per file. `import type` for type-only. Paths end `.js`.
-
-### Security
-- All routes: `requireAuth` + `requireRole` unless marked `// PUBLIC: <reason>`.
-- Never log/expose secret keys. Strip `passwordHash` in `toJSON`.
-- No `...rest` spread from `req.query` into DB queries (NoSQL injection vector).
-- No `console.*` — use `logger` from `src/shared/logger/logger.js`.
-
-### Database
-- Soft deletes via `deletedAt`. Models use `isoDatePlugin` + soft-delete pre-hooks.
-- Zod validates requests; Mongoose schema validates data integrity.
-
-## 4. Testing
-
-Every endpoint needs tests for: **200** (happy) · **401** (unauth) · **403** (role) · **400/422** (validation).
-Mock all externals (Stellar, Storage, IoT). Run `npm test` before done.
-
-## 5. Documentation
-
-Update `docs/swagger.yaml` for every endpoint change. Swagger ↔ implementation must match.
-
-## 6. Agent Skills (Mandatory Pipeline)
-
-After code is written, execute **in order**. Fix issues before advancing.
-
-| # | Skill | File | Validates |
-|---|-------|------|-----------|
-| 1 | Cross-Check | `.agents/skills/cross-check/SKILL.md` | Route↔Controller↔Service↔Model↔Zod↔Swagger alignment |
-| 2 | Cleanup | `.agents/skills/cleanup/SKILL.md` | Duplicates, conventions, security, `any` usage |
-| 3 | Document | `.agents/skills/document/SKILL.md` | Swagger, JSDoc, changelog, error codes |
-
-## 7. Execution Steps
-
-1. **Read** existing patterns in `src/shared` and target module.
-2. **Schema** — Zod validation + Mongoose model.
-3. **Service** — Business logic with `AppError` throws.
-4. **Controller** — Thin, uses `sendResponse`. Route wired with auth.
-5. **Test** — Cover auth, roles, validation, happy path.
-6. **Document** — Swagger + JSDoc.
-7. **Skills** — Run Cross-Check → Cleanup → Document.
-
-## 8. Quality Gates
-
-Treat violations as hard errors. Stop and fix.
-
+## 6. Quality Gates
 | Gate | Rule |
 |------|------|
 | Verify-first | Never assume a function/type/import exists. Read the file. |
@@ -95,54 +40,26 @@ Treat violations as hard errors. Stop and fix.
 | Single-concern | One edit = one concern. 4+ files → outline plan first. |
 | No floating promises | `setImmediate(async...)` must have `.catch()` or try/catch inside. |
 
-### Pre-Commit Checklist
-- [ ] No `any` · No `console.*` · No `try/catch` in controllers
-- [ ] No `res.json()` (use `sendResponse`) · No `new Error()` (use `AppError`)
-- [ ] `requireAuth` on all routes (or `// PUBLIC: <reason>`)
-- [ ] No `...rest` spread into DB queries · No duplicate imports/declarations
-- [ ] Zod schemas export inferred types · Models use `isoDatePlugin` + soft-delete
-- [ ] Swagger updated · `npm run build` passes · `npm test` passes
-
-## 9. Architecture Boundaries
-
-Modules are self-contained under `src/modules/<domain>/`. Cross-module imports are allowed **only** along these directions to prevent circular dependencies and tight coupling:
+## 7. Architecture Boundaries
+Cross-module imports allowed only along these directions:
 
 | Consumer | Allowed Dependencies |
 |----------|---------------------|
 | `auth` | `users` |
 | `invitations` | `users` |
-| `ledger` | `shipments` (via shared types) |
-| `payments` | `shipments` (via model refs) |
-| `shipments` | `payments` (for dispute/settlement hooks) |
-| `telemetry` | `shipments` (via model refs) |
+| `ledger` | `shipments` (shared types) |
+| `payments` | `shipments` (model refs) |
+| `shipments` | `payments` (dispute/settlement hooks) |
+| `telemetry` | `shipments` (model refs) |
 | `users` | `organizations` |
 | `webhooks` | `shipments`, `telemetry` |
 | `analytics` | `shipments`, `payments` |
 | `events` | `infra/redis` |
-| `notifications` | `users` (for preferences) |
+| `notifications` | `users` (preferences) |
 
-**Rules:**
-- Prefer domain events (Redis pub/sub, webhooks) over direct service calls between modules.
-- Never import a sibling module's controller.
-- Never create circular dependencies. If two modules need to coordinate, extract shared logic into `src/shared/` or use events.
-- When adding a new cross-module dependency, document it here and in the consumer module's `AGENTS.md`.
+Prefer domain events over direct service calls. Never import a sibling controller. Never create circular deps — extract shared logic into `src/shared/` or use events. Document new deps here and in the consumer module's `AGENTS.md`.
 
-## 10. Reviewing & Updating Agent Documentation
-
-These instructions are **guidance**, not immutable rules. They should be reviewed and updated **manually** when conventions evolve so agents and developers do not work from stale guidance. Treat the tables below as a checklist for the PR author or reviewer, not as an automated trigger.
-
-### When to consider an update
-
-| Change | Review these files |
-|--------|------------------|
-| New module added | Root `AGENTS.md` § Architecture Boundaries; create `src/modules/<domain>/AGENTS.md` from `__template__` |
-| Convention changed (e.g., new error-code pattern) | Root `AGENTS.md` § Conventions; affected module `AGENTS.md` files |
-| File added/removed/renamed in a module | That module's `AGENTS.md` — only if the structural pattern changes |
-| New cross-module dependency introduced | Root `AGENTS.md` § Architecture Boundaries; consumer module's `AGENTS.md` |
-| New shared utility or middleware | Root `AGENTS.md` § Architecture; `src/shared/` docs if present |
-| Prompt template no longer accurate | `.agents/prompts/*.md` |
-
-### Pre-Commit Checklist (extended)
+## 8. Pre-Commit Checklist
 - [ ] No `any` · No `console.*` · No `try/catch` in controllers
 - [ ] No `res.json()` (use `sendResponse`) · No `new Error()` (use `AppError`)
 - [ ] `requireAuth` on all routes (or `// PUBLIC: <reason>`)
@@ -151,8 +68,17 @@ These instructions are **guidance**, not immutable rules. They should be reviewe
 - [ ] Swagger updated · `npm run build` passes · `npm test` passes
 - [ ] **AGENTS.md reviewed if conventions, boundaries, or module structure changed**
 
-### Token Efficiency
-- Read before writing. Batch parallel reads. Cite file:line.
-- Minimal diffs — don't rewrite files for one-line fixes.
-- No filler prose. Tables/checklists over paragraphs.
+## 9. Token Efficiency
+Read before writing. Batch parallel reads. Cite file:line. Minimal diffs. No filler prose.
 
+## 10. Reviewing & Updating Agent Documentation
+These instructions are **guidance**, not immutable rules. Review and update **manually** when conventions evolve.
+
+| Change | Review these files |
+|--------|------------------|
+| New module added | Root `AGENTS.md` §7; create module `AGENTS.md` from `__template__` |
+| Convention changed | Root `AGENTS.md` §3; affected module `AGENTS.md` files |
+| File added/removed/renamed in a module | That module's `AGENTS.md` — only if structural pattern changes |
+| New cross-module dependency | Root `AGENTS.md` §7; consumer module's `AGENTS.md` |
+| New shared utility or middleware | Root `AGENTS.md` §2; `src/shared/` docs if present |
+| Prompt template no longer accurate | `.agents/prompts/*.md` |
