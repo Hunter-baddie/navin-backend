@@ -7,7 +7,8 @@ import { config } from '../../config/index.js';
 import { OrganizationType } from '../../shared/constants/index.js';
 import { UserModel, OrganizationModel, UserRole } from '../users/users.model.js';
 import { blockToken, isTokenBlocked } from '../../infra/redis/tokenBlocklist.js';
-import type { SignupInput, LoginInput, RegisterCompanyInput } from './auth.validation.js';
+import { createSession } from './session.service.js';
+import type { SignupInput, LoginInput } from './auth.validation.js';
 import { logger } from '../../shared/logger/logger.js';
 import { sendEmail, resetPasswordEmailHtml } from '../../services/email.service.js';
 
@@ -23,22 +24,23 @@ export interface TokenPayload {
 // SECURITY: [Token Lifecycle Compromise] — This prevents long-term token abuse by enforcing a 7-day Time-To-Live (TTL) limit on authentication tokens, bounding the window of opportunity for stolen credentials.
 const TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
-function generateToken(payload: Omit<TokenPayload, 'jti'>): string {
+function generateToken(payload: Omit<TokenPayload, 'jti'>): { token: string; jti: string } {
   // SECURITY: [Token Replay Attack] — This prevents reuse of old or intercepted JWTs by attaching a cryptographically random, unique JWT ID (jti) to each token, allowing the middleware to track and revoke individual sessions via Redis.
   const jti = randomUUID();
-  return jwt.sign({ ...payload, jti }, env.JWT_SECRET, { expiresIn: TOKEN_TTL_SECONDS });
+  const token = jwt.sign({ ...payload, jti }, env.JWT_SECRET, { expiresIn: TOKEN_TTL_SECONDS });
+  return { token, jti };
 }
 
 /**
  * Determines the safe default role for public signup.
- * 
+ *
  * SECURITY: Always returns VIEWER role to prevent privilege escalation.
  * No exceptions or role overrides permitted for unauthenticated signup.
  * Admin/privileged roles are assigned exclusively through:
  * - POST /api/users (ADMIN only)
  * - POST /api/users/team (ADMIN only)
  * - Invitation acceptance flow (role determined by inviter)
- * 
+ *
  * @param {string} _email - Email (unused - role is same for all users)
  * @returns {UserRole} Always returns VIEWER
  */
@@ -54,20 +56,26 @@ function derivePersona(role: string, organizationType?: OrganizationType): 'comp
   return 'company';
 }
 
+export interface RequestContext {
+  ip?: string;
+  userAgent?: string;
+}
+
 /**
  * Registers a new user and returns an auth token.
- * 
+ *
  * SECURITY CONTROLS:
  * - Public signup ALWAYS assigns VIEWER role (determined via determineUserRole)
  * - No role parameter accepted in request body (enforced by SignupBodySchema)
  * - Admin/privileged roles only assignable via authenticated admin endpoints
  * - Prevents privilege escalation (CWE-284) by unauthenticated users
- * 
+ *
  * @param {SignupInput} input - User signup input payload.
+ * @param {RequestContext} [ctx] - Optional request context for session tracking.
  * @returns {Promise<{user: {id: string; email: string; name: string; role: string}; token: string}>} The created user and JWT token.
  * @throws {AppError} When the email is already in use.
  */
-export async function signup(input: SignupInput) {
+export async function signup(input: SignupInput, ctx?: RequestContext) {
   const existing = await UserModel.findOne({ email: input.email });
   if (existing) {
     throw new AppError(409, 'Email already in use', 'EMAIL_TAKEN');
@@ -90,13 +98,15 @@ export async function signup(input: SignupInput) {
     organizationType = organization?.type;
   }
 
-  const token = generateToken({
+  const { token, jti } = generateToken({
     userId: user._id.toString(),
     role: user.role as string,
     persona: derivePersona(user.role as string, organizationType),
     organizationId: user.organizationId?.toString(),
     organizationType,
   });
+
+  await createSession({ userId: user._id.toString(), jti, ip: ctx?.ip, userAgent: ctx?.userAgent });
 
   return {
     user: {
@@ -112,10 +122,11 @@ export async function signup(input: SignupInput) {
 /**
  * Authenticates a user and returns a JWT.
  * @param {LoginInput} input - User login credentials.
+ * @param {RequestContext} [ctx] - Optional request context for session tracking.
  * @returns {Promise<{user: {id: string; email: string; name: string; role: string}; token: string}>} Authenticated user data and token.
  * @throws {AppError} When credentials are invalid.
  */
-export async function login(input: LoginInput) {
+export async function login(input: LoginInput, ctx?: RequestContext) {
   const user = await UserModel.findOne({ email: input.email });
   if (!user) {
     throw new AppError(401, 'Invalid credentials', 'INVALID_CREDENTIALS');
@@ -132,13 +143,15 @@ export async function login(input: LoginInput) {
     organizationType = organization?.type;
   }
 
-  const token = generateToken({
+  const { token, jti } = generateToken({
     userId: user._id.toString(),
     role: user.role as string,
     persona: derivePersona(user.role as string, organizationType),
     organizationId: user.organizationId?.toString(),
     organizationType,
   });
+
+  await createSession({ userId: user._id.toString(), jti, ip: ctx?.ip, userAgent: ctx?.userAgent });
 
   return {
     user: {
@@ -217,7 +230,7 @@ export async function refreshToken(token: string): Promise<{ token: string; expi
     organizationType,
   });
 
-  return { token: newToken, expiresIn: TOKEN_TTL_SECONDS };
+  return { token: newToken.token, expiresIn: TOKEN_TTL_SECONDS };
 }
 
 /**
@@ -313,7 +326,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 /**
  * Self-service company registration: creates both an Organization (type: ENTERPRISE)
  * and the first admin user in a single atomic operation.
- * 
+ *
  * @param {RegisterCompanyInput} input - Company and admin user details.
  * @returns {Promise<{user: {id: string; email: string; name: string; role: string}; token: string}>} The created admin user and JWT token.
  * @throws {AppError} 409 if email or organization name already exists.
@@ -384,7 +397,7 @@ export async function registerCompany(input: {
     const createdUser = user[0];
 
     // Generate JWT token with organization context
-    const token = generateToken({
+    const { token } = generateToken({
       userId: createdUser._id.toString(),
       role: UserRole.ADMIN,
       persona: derivePersona(UserRole.ADMIN, OrganizationType.ENTERPRISE),
