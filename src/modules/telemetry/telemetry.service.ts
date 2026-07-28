@@ -62,6 +62,7 @@ export async function createTelemetryRecord(input: {
   dataHash: string;
   stellarTxHash?: string;
   anchorStatus?: TelemetryAnchorStatus;
+  shockMagnitude?: number;
   rawPayload: unknown;
 }) {
   return Telemetry.create({
@@ -76,6 +77,7 @@ export async function createTelemetryRecord(input: {
     dataHash: input.dataHash,
     stellarTxHash: input.stellarTxHash,
     anchorStatus: input.anchorStatus ?? TelemetryAnchorStatus.PENDING_ANCHOR,
+    shockMagnitude: input.shockMagnitude,
     rawPayload: input.rawPayload,
   });
 }
