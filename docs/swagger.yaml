@@ -10,7 +10,7 @@ info:
     ## Authentication
     ### JWT Bearer (`bearerAuth`)
     Most protected endpoints require `Authorization: Bearer <JWT>`. Tokens are issued by
-    `/api/auth/login`, `/api/auth/signup`, or `/api/auth/refresh`. Claims include `userId`,
+    `/api/auth/login`, `/api/auth/signup`, `/api/auth/register/company`, or `/api/auth/refresh`. Claims include `userId`,
     `role` (`SUPER_ADMIN` | `ADMIN` | `MANAGER` | `VIEWER` | `CUSTOMER`), optional
     `organizationId` / `organizationType` (`ENTERPRISE` | `LOGISTICS`), and `jti` (used for
     logout / revocation). Role permissions and frontend persona mapping are documented in
@@ -637,6 +637,111 @@ paths:
                     type: string
                   data:
                     nullable: true
+  /api/auth/register/company:
+    post:
+      summary: Self-service company registration
+      description: |
+        Creates both an Organization (type: ENTERPRISE) and its first admin user in a single atomic operation.
+        
+        This endpoint enables self-service company onboarding without requiring a SUPER_ADMIN to pre-provision organizations.
+        It creates:
+        1. An Organization with type ENTERPRISE and company settings (industry, country, company size)
+        2. An admin user (role: ADMIN) linked to the new organization
+        3. Returns a JWT token with organization context included
+      security: []
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - companyName
+                - industry
+                - country
+                - companySize
+                - adminName
+                - email
+                - password
+              properties:
+                companyName:
+                  type: string
+                  minLength: 1
+                  description: Name of the company
+                industry:
+                  type: string
+                  minLength: 1
+                  description: Industry classification (e.g., Logistics, Tech, Healthcare)
+                country:
+                  type: string
+                  minLength: 1
+                  description: Country code or name
+                companySize:
+                  type: string
+                  minLength: 1
+                  description: Company size category (e.g., 10-50, 50-100, 100+, 500+)
+                adminName:
+                  type: string
+                  minLength: 1
+                  description: Full name of the first admin user
+                email:
+                  type: string
+                  format: email
+                  description: Email address for the admin user (must be unique)
+                password:
+                  type: string
+                  minLength: 8
+                  description: Admin password (minimum 8 characters)
+      responses:
+        '201':
+          description: Company and admin user created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: Admin user ID
+                          email:
+                            type: string
+                            description: Admin user email
+                          name:
+                            type: string
+                            description: Admin user name
+                          role:
+                            type: string
+                            enum:
+                              - ADMIN
+                      token:
+                        type: string
+                        description: JWT bearer token with organization context
+                  meta:
+                    type: object
+        '400':
+          description: Validation error (missing fields, weak password, invalid email)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - email already in use or company name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/audit-logs:
     get:
       summary: Retrieve compliance audit logs
@@ -4643,7 +4748,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        JWT access token issued by `/api/auth/login`, `/api/auth/signup`, or `/api/auth/refresh`.
+        JWT access token issued by `/api/auth/login`, `/api/auth/signup`, `/api/auth/register/company`, or `/api/auth/refresh`.
         Send as `Authorization: Bearer <token>`.
 
         **Claims (payload):**

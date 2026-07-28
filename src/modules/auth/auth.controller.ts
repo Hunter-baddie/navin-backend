@@ -6,6 +6,7 @@ import {
   forgotPassword,
   resetPassword,
   refreshToken,
+  registerCompany,
 } from './auth.service.js';
 import { sendResponse } from '../../shared/http/sendResponse.js';
 
@@ -89,4 +90,25 @@ export const refreshController: RequestHandler = async (req, res) => {
   const { token } = req.body as { token: string };
   const result = await refreshToken(token);
   sendResponse(res, 200, true, 'Token refreshed', result);
+};
+
+/**
+ * Self-service company registration endpoint.
+ * Creates both an Organization (type: ENTERPRISE) and its first admin user.
+ *
+ * @param req.body.companyName - Name of the company.
+ * @param req.body.industry - Industry classification.
+ * @param req.body.country - Country code.
+ * @param req.body.companySize - Company size category.
+ * @param req.body.adminName - Name of the first admin user.
+ * @param req.body.email - Email for the admin user (must be unique).
+ * @param req.body.password - Admin password (min 8 characters).
+ * @returns HTTP 201 with envelope `{ success, message, data }` where data is `{ user, token }`.
+ * @throws {AppError} 409 EMAIL_TAKEN — when the email is already registered.
+ * @throws {AppError} 409 DUPLICATE_KEY — when the company name already exists.
+ * @throws {AppError} 400 VALIDATION_ERROR — for missing/invalid fields.
+ */
+export const registerCompanyController: RequestHandler = async (req, res) => {
+  const result = await registerCompany(req.body);
+  sendResponse(res, 201, true, 'Company and admin user created successfully', result);
 };
