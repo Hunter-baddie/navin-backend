@@ -23,9 +23,6 @@ export const pollEventsController: RequestHandler = async (req, res) => {
   sendResponse(res, 200, true, 'Events retrieved', events);
 };
 
-import { AppError, ErrorCodes } from '../../shared/http/errors.js';
-import { subscribeUserToEvents } from './events.service.js';
-
 /**
  * Streams Server-Sent Events for the authenticated user.
  * Route: `GET /api/events/` (SSE). Authenticated via `requireSseAuth`.

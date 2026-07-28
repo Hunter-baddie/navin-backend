@@ -60,4 +60,3 @@ InvitationSchema.pre('aggregate', function () {
 });
 
 export const InvitationModel = mongoose.model<IInvitation>('Invitation', InvitationSchema);
-export { InvitationStatus };
