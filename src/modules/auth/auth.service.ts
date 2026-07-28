@@ -31,6 +31,16 @@ function generateToken(payload: Omit<TokenPayload, 'jti'>): string {
 
 /**
  * Determines the safe default role for public signup.
+ * 
+ * SECURITY: Always returns VIEWER role to prevent privilege escalation.
+ * No exceptions or role overrides permitted for unauthenticated signup.
+ * Admin/privileged roles are assigned exclusively through:
+ * - POST /api/users (ADMIN only)
+ * - POST /api/users/team (ADMIN only)
+ * - Invitation acceptance flow (role determined by inviter)
+ * 
+ * @param {string} _email - Email (unused - role is same for all users)
+ * @returns {UserRole} Always returns VIEWER
  */
 function determineUserRole(_email: string): UserRole {
   return UserRole.VIEWER;
@@ -46,6 +56,13 @@ function derivePersona(role: string, organizationType?: OrganizationType): 'comp
 
 /**
  * Registers a new user and returns an auth token.
+ * 
+ * SECURITY CONTROLS:
+ * - Public signup ALWAYS assigns VIEWER role (determined via determineUserRole)
+ * - No role parameter accepted in request body (enforced by SignupBodySchema)
+ * - Admin/privileged roles only assignable via authenticated admin endpoints
+ * - Prevents privilege escalation (CWE-284) by unauthenticated users
+ * 
  * @param {SignupInput} input - User signup input payload.
  * @returns {Promise<{user: {id: string; email: string; name: string; role: string}; token: string}>} The created user and JWT token.
  * @throws {AppError} When the email is already in use.

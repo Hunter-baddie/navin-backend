@@ -7,6 +7,15 @@ import { PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE } from '../../shared/c
  * Business domain: register a new user account. Password minimum length is shared
  * via PASSWORD_MIN_LENGTH so auth and invitation accept flows stay policy-aligned.
  * Optional organizationId attaches the user to an existing org when invited/provisioned.
+ *
+ * SECURITY: [CWE-284: Improper Access Control] — This schema intentionally does NOT include
+ * a `role` field. Public signup is restricted to VIEWER/CUSTOMER roles only.
+ * Privileged roles (SUPER_ADMIN, ADMIN, MANAGER) are exclusively assignable by:
+ * - POST /api/users (ADMIN only, creates password-less users)
+ * - POST /api/users/team (ADMIN only, creates password-less team members)
+ * - Invitation flow via email verification
+ * This prevents unauthenticated privilege escalation attacks where users could
+ * self-assign admin roles during registration.
  */
 export const SignupBodySchema = z.object({
   email: z.string().email(),

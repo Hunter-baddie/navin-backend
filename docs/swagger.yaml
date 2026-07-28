@@ -2089,6 +2089,121 @@ paths:
                               type: integer
                             anomalyCount:
                               type: integer
+  /api/analytics/summary:
+    get:
+      summary: Get KPI summary with 30-day sparklines
+      description: |
+        Returns dashboard KPIs with 30-day sparklines for visualization.
+        Aggregates the last 60 days of shipments into current (last 30 days) vs previous (30-60 days ago) periods.
+        Results are cached for 5 minutes.
+      security:
+        - bearerAuth: []
+      tags:
+        - Analytics
+      parameters:
+        - in: query
+          name: organizationId
+          schema:
+            type: string
+          description: Optional organization ID for scoped analytics
+      responses:
+        '200':
+          description: KPI summary with sparklines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Summary retrieved
+                  data:
+                    type: object
+                    properties:
+                      onTimeDeliveryRate:
+                        type: number
+                        description: Current 30-day on-time delivery rate (0-100)
+                        example: 85.5
+                      onTimeDeliveryRatePrev:
+                        type: number
+                        description: Previous 30-day period on-time delivery rate (0-100)
+                        example: 82.3
+                      onTimeDeliverySparkline:
+                        type: array
+                        minItems: 30
+                        maxItems: 30
+                        items:
+                          type: integer
+                          minimum: 0
+                          maximum: 100
+                        description: 30-day sparkline of on-time rates (one value per day)
+                        example: [85, 86, 84, 87, 85, 86, 85, 84, 85, 86, 87, 85, 84, 86, 85, 86, 85, 87, 86, 85, 84, 85, 86, 85, 84, 85, 86, 87, 85, 86]
+                      averageTransitDays:
+                        type: number
+                        description: Current 30-day average transit time in days
+                        example: 4.2
+                      averageTransitDaysPrev:
+                        type: number
+                        description: Previous 30-day average transit time in days
+                        example: 4.1
+                      averageTransitSparkline:
+                        type: array
+                        minItems: 30
+                        maxItems: 30
+                        items:
+                          type: number
+                        description: 30-day sparkline of average transit days
+                      totalShipmentsThisMonth:
+                        type: integer
+                        description: Total shipments in current 30-day period
+                        example: 450
+                      totalShipmentsPrevMonth:
+                        type: integer
+                        description: Total shipments in previous 30-day period
+                        example: 430
+                      shipmentsSparkline:
+                        type: array
+                        minItems: 30
+                        maxItems: 30
+                        items:
+                          type: integer
+                          minimum: 0
+                        description: 30-day sparkline of shipment counts
+                      disputeRate:
+                        type: number
+                        description: Current 30-day dispute rate (0-100)
+                        example: 3.2
+                      disputeRatePrev:
+                        type: number
+                        description: Previous 30-day dispute rate (0-100)
+                        example: 3.5
+                      disputesSparkline:
+                        type: array
+                        minItems: 30
+                        maxItems: 30
+                        items:
+                          type: integer
+                          minimum: 0
+                        description: 30-day sparkline of dispute counts
+                      lastUpdated:
+                        type: string
+                        format: date-time
+                        description: Timestamp when data was last calculated
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/payments:
     get:
       summary: Get payments history (legacy — prefer /api/settlements)
