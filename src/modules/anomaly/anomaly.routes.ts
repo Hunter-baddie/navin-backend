@@ -29,13 +29,6 @@ anomaliesRouter.get(
   asyncHandler(getAnomalies)
 );
 
-anomaliesRouter.get(
-  '/stats',
-  requireAuth,
-  requireRole(UserRole.ADMIN, UserRole.MANAGER),
-  asyncHandler(getAnomalyStats)
-);
-
 anomaliesRouter.patch(
   '/:id/resolve',
   requireAuth,

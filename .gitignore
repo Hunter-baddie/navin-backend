@@ -17,6 +17,9 @@ pnpm-debug.log*
 logs/
 *.log
 
+# agent / temporary search output
+grep_out.txt
+
 # coverage
 coverage/
 
@@ -37,9 +40,10 @@ coverage/
 .agent/
 issue.md
 
-# Agent Skills
+# Agent Skills & Prompts
 .agents/*
 !.agents/skills/
+!.agents/prompts/
 .agents/skills/*
 !.agents/skills/cleanup/
 !.agents/skills/cleanup/**

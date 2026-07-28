@@ -1,8 +1,7 @@
-import { OrganizationType } from '../../shared/types/user.js';
 import { UserRole } from '../../shared/constants/index.js';
 import { isoDatePlugin } from '../../shared/plugins/isoDatePlugin.js';
 import mongoose from 'mongoose';
-import { IUser, IOrganization } from '../../shared/types/user.js';
+import { IUser } from '../../shared/types/user.js';
 
 // Re-export OrganizationModel and OrganizationType from organizations module for backward compatibility
 export { OrganizationType } from '../../shared/types/user.js';
@@ -16,6 +15,8 @@ const UserSchema = new mongoose.Schema(
     role: { type: String, enum: Object.values(UserRole), required: true },
     organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: false },
     walletAddress: { type: String, required: false },
+    phone: { type: String, required: false },
+    phoneVerified: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
   },
   {

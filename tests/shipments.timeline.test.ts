@@ -55,9 +55,7 @@ await jest.unstable_mockModule('../src/modules/shipments/shipments.model.js', ()
         lean: () => {
           const found = shipmentsData.find(d => String(d._id) === String(id));
           return Promise.resolve(
-            found
-              ? { enterpriseId: found.enterpriseId, logisticsId: found.logisticsId }
-              : null
+            found ? { enterpriseId: found.enterpriseId, logisticsId: found.logisticsId } : null
           );
         },
       }),
@@ -96,8 +94,7 @@ await jest.unstable_mockModule('../src/modules/telemetry/telemetry.model.js', ()
 await jest.unstable_mockModule('../src/modules/anomaly/anomaly.model.js', () => ({
   Anomaly: {
     find: (query: { shipmentId?: string }) => ({
-      lean: () =>
-        Promise.resolve(anomalyData.filter(row => row.shipmentId === query.shipmentId)),
+      lean: () => Promise.resolve(anomalyData.filter(row => row.shipmentId === query.shipmentId)),
     }),
   },
 }));
@@ -112,6 +109,8 @@ await jest.unstable_mockModule('../src/infra/socket/io.js', () => ({
   emitStatusUpdate: jest.fn(),
   emitAnomalyDetected: jest.fn(),
   emitTelemetryUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
+  emitPaymentStatusChange: jest.fn(),
 }));
 
 const { buildApp } = await import('../src/app.js');

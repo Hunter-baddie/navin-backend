@@ -67,6 +67,7 @@ export type SocketIoMock = {
   emitAnomalyDetected: MockFn;
   emitTelemetryUpdate: MockFn;
   emitStatusUpdate: MockFn;
+  emitPaymentStatusChange: MockFn;
 };
 
 /**
@@ -157,6 +158,7 @@ export function createSocketIoMock(overrides: Partial<SocketIoMock> = {}): Socke
     emitAnomalyDetected: jest.fn(),
     emitTelemetryUpdate: jest.fn(),
     emitStatusUpdate: jest.fn(),
+    emitPaymentStatusChange: jest.fn(),
     ...overrides,
   };
 }

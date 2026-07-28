@@ -10,6 +10,7 @@ import {
   ForgotPasswordBodySchema,
   ResetPasswordBodySchema,
   RefreshBodySchema,
+  RegisterCompanyBodySchema,
 } from './auth.validation.js';
 import {
   signupController,
@@ -18,6 +19,7 @@ import {
   forgotPasswordController,
   resetPasswordController,
   refreshController,
+  registerCompanyController,
 } from './auth.controller.js';
 import {
   createApiKeyController,
@@ -41,6 +43,11 @@ authRouter.post(
   '/login',
   validateRequest({ body: LoginBodySchema }),
   asyncHandler(loginController)
+);
+authRouter.post(
+  '/register/company',
+  validateRequest({ body: RegisterCompanyBodySchema }),
+  asyncHandler(registerCompanyController)
 );
 authRouter.post('/logout', asyncHandler(requireAuth), asyncHandler(logoutController));
 authRouter.post(

@@ -4,16 +4,17 @@ import { randomUUID } from 'crypto';
 import { AppError } from '../../shared/http/errors.js';
 import { env } from '../../env.js';
 import { config } from '../../config/index.js';
+import { OrganizationType } from '../../shared/constants/index.js';
 import { UserModel, OrganizationModel, UserRole } from '../users/users.model.js';
-import type { OrganizationType } from '../../shared/types/user.js';
 import { blockToken, isTokenBlocked } from '../../infra/redis/tokenBlocklist.js';
-import type { SignupInput, LoginInput } from './auth.validation.js';
+import type { SignupInput, LoginInput, RegisterCompanyInput } from './auth.validation.js';
 import { logger } from '../../shared/logger/logger.js';
 import { sendEmail, resetPasswordEmailHtml } from '../../services/email.service.js';
 
 export interface TokenPayload {
   userId: string;
   role: string;
+  persona?: 'company' | 'customer';
   organizationId?: string;
   organizationType?: OrganizationType;
   jti: string;
@@ -30,13 +31,38 @@ function generateToken(payload: Omit<TokenPayload, 'jti'>): string {
 
 /**
  * Determines the safe default role for public signup.
+ * 
+ * SECURITY: Always returns VIEWER role to prevent privilege escalation.
+ * No exceptions or role overrides permitted for unauthenticated signup.
+ * Admin/privileged roles are assigned exclusively through:
+ * - POST /api/users (ADMIN only)
+ * - POST /api/users/team (ADMIN only)
+ * - Invitation acceptance flow (role determined by inviter)
+ * 
+ * @param {string} _email - Email (unused - role is same for all users)
+ * @returns {UserRole} Always returns VIEWER
  */
 function determineUserRole(_email: string): UserRole {
   return UserRole.VIEWER;
 }
 
+function derivePersona(role: string, organizationType?: OrganizationType): 'company' | 'customer' {
+  if (role === UserRole.CUSTOMER || organizationType === OrganizationType.ENTERPRISE) {
+    return 'customer';
+  }
+
+  return 'company';
+}
+
 /**
  * Registers a new user and returns an auth token.
+ * 
+ * SECURITY CONTROLS:
+ * - Public signup ALWAYS assigns VIEWER role (determined via determineUserRole)
+ * - No role parameter accepted in request body (enforced by SignupBodySchema)
+ * - Admin/privileged roles only assignable via authenticated admin endpoints
+ * - Prevents privilege escalation (CWE-284) by unauthenticated users
+ * 
  * @param {SignupInput} input - User signup input payload.
  * @returns {Promise<{user: {id: string; email: string; name: string; role: string}; token: string}>} The created user and JWT token.
  * @throws {AppError} When the email is already in use.
@@ -67,6 +93,7 @@ export async function signup(input: SignupInput) {
   const token = generateToken({
     userId: user._id.toString(),
     role: user.role as string,
+    persona: derivePersona(user.role as string, organizationType),
     organizationId: user.organizationId?.toString(),
     organizationType,
   });
@@ -108,6 +135,7 @@ export async function login(input: LoginInput) {
   const token = generateToken({
     userId: user._id.toString(),
     role: user.role as string,
+    persona: derivePersona(user.role as string, organizationType),
     organizationId: user.organizationId?.toString(),
     organizationType,
   });
@@ -184,6 +212,7 @@ export async function refreshToken(token: string): Promise<{ token: string; expi
   const newToken = generateToken({
     userId: user._id.toString(),
     role: user.role as string,
+    persona: derivePersona(user.role as string, organizationType),
     organizationId: user.organizationId?.toString(),
     organizationType,
   });
@@ -278,5 +307,104 @@ export async function resetPassword(token: string, newPassword: string): Promise
   if (payload.jti) {
     const ttl = payload.exp ? payload.exp - Math.floor(Date.now() / 1000) : RESET_TOKEN_TTL_SECONDS;
     if (ttl > 0) await blockToken(payload.jti, ttl);
+  }
+}
+
+/**
+ * Self-service company registration: creates both an Organization (type: ENTERPRISE)
+ * and the first admin user in a single atomic operation.
+ * 
+ * @param {RegisterCompanyInput} input - Company and admin user details.
+ * @returns {Promise<{user: {id: string; email: string; name: string; role: string}; token: string}>} The created admin user and JWT token.
+ * @throws {AppError} 409 if email or organization name already exists.
+ * @throws {AppError} 400 for validation failures.
+ */
+export async function registerCompany(input: {
+  companyName: string;
+  industry: string;
+  country: string;
+  companySize: string;
+  adminName: string;
+  email: string;
+  password: string;
+}) {
+  // Start a MongoDB session for transaction
+  const session = await UserModel.startSession();
+  session.startTransaction();
+
+  try {
+    // Check if email already exists
+    const existingUser = await UserModel.findOne({ email: input.email });
+    if (existingUser) {
+      throw new AppError(409, 'Email already in use', 'EMAIL_TAKEN');
+    }
+
+    // Check if organization name already exists
+    const existingOrg = await OrganizationModel.findOne({ name: input.companyName });
+    if (existingOrg) {
+      throw new AppError(409, 'Organization name already exists', 'DUPLICATE_KEY');
+    }
+
+    // Create organization with settings
+    const organization = await OrganizationModel.create(
+      [
+        {
+          name: input.companyName,
+          type: OrganizationType.ENTERPRISE,
+          settings: {
+            industry: input.industry,
+            country: input.country,
+            companySize: input.companySize,
+          },
+        },
+      ],
+      { session }
+    );
+
+    const orgId = organization[0]._id;
+
+    // Create admin user with password hash
+    const hashedPassword = await bcrypt.hash(input.password, 10);
+    const user = await UserModel.create(
+      [
+        {
+          email: input.email,
+          name: input.adminName,
+          passwordHash: hashedPassword,
+          role: UserRole.ADMIN,
+          organizationId: orgId,
+        },
+      ],
+      { session }
+    );
+
+    // Commit transaction
+    await session.commitTransaction();
+
+    const createdUser = user[0];
+
+    // Generate JWT token with organization context
+    const token = generateToken({
+      userId: createdUser._id.toString(),
+      role: UserRole.ADMIN,
+      persona: derivePersona(UserRole.ADMIN, OrganizationType.ENTERPRISE),
+      organizationId: orgId.toString(),
+      organizationType: OrganizationType.ENTERPRISE,
+    });
+
+    return {
+      user: {
+        id: createdUser._id,
+        email: createdUser.email,
+        name: createdUser.name,
+        role: createdUser.role,
+      },
+      token,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    await session.endSession();
   }
 }

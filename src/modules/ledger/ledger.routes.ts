@@ -12,14 +12,14 @@ export const ledgerRouter = Router();
 ledgerRouter.use(requireAuth);
 
 ledgerRouter.get(
-  '/',
+  '/blocks',
   requireRole(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER),
   validateRequest({ query: GetLedgerBlocksQuerySchema }),
   asyncHandler(getLedgerBlocks)
 );
 
 ledgerRouter.get(
-  '/:id',
+  '/blocks/:id',
   requireRole(UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER),
   validateRequest({ params: LedgerBlockIdParamSchema }),
   asyncHandler(getLedgerBlockById)

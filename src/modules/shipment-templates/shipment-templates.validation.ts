@@ -35,3 +35,5 @@ export type UpdateTemplateInput = z.infer<typeof UpdateTemplateBodySchema>;
 export const TemplateIdParamSchema = z.object({
   id: z.string().min(1),
 });
+
+export type TemplateIdParam = z.infer<typeof TemplateIdParamSchema>;

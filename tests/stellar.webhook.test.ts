@@ -52,6 +52,7 @@ describe('POST /api/webhooks/stellar', () => {
       getIO: jest.fn(),
       emitAnomalyDetected: jest.fn(),
       emitTelemetryUpdate: jest.fn(),
+      emitPaymentStatusChange: jest.fn(),
       emitStatusUpdate: jest.fn(),
     }));
 
