@@ -197,3 +197,30 @@ If you're stuck, have questions, or want to discuss ideas before starting:
 
 Thank you for contributing to Navin-backend!
 Together, we're building a transparent and secure delivery tracking platform on Stellar.
+
+---
+
+## Build & Test Requirements
+
+All PRs must pass the following CI checks before they can be merged:
+
+| Check | Command | Description |
+|-------|---------|-------------|
+| Dependency audit | `npm run check:deps` | Scans `src/` imports against `package.json` `dependencies` |
+| Type check | `npm run typecheck` | Runs `tsc --noEmit` with strict mode — zero errors required |
+| Build | `npm run build` | Compiles TypeScript to `dist/` — must succeed cleanly |
+| Tests | `npm test` | Full test suite must pass |
+
+### Clean-Install Build Triage
+
+**All build and type-check work must be reproducible in a clean `npm ci` environment.** This means:
+
+- Base your triage strictly on `package.json`, `package-lock.json`, and source files in `src/`.
+- **Never** assume a package is available because it exists in your local `node_modules/`. Local installs may include packages that are not in `package.json` (transitive deps, global installs, or manually added packages).
+- If a build fails in CI but passes locally, reproduce the clean-install environment before debugging:
+  ```bash
+  rm -rf node_modules && npm ci && npm run build
+  ```
+- If you add a new runtime import, add the package to `package.json` `dependencies` (**not** `devDependencies`) and commit the updated `package-lock.json`.
+- Run `npm run check:deps` locally before opening a PR to catch undeclared imports early.
+- CI pins Node.js 20 and uses `npm ci` — never `npm install` — to guarantee a reproducible dependency tree.

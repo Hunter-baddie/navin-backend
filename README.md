@@ -1,5 +1,7 @@
 # Navin Backend
 
+[![Type Check](https://github.com/Navin-xmr/navin-backend/actions/workflows/typecheck.yml/badge.svg)](https://github.com/Navin-xmr/navin-backend/actions/workflows/typecheck.yml)
+
 **Navin** is a blockchain-powered logistics platform that improves supply chain visibility for enterprises through tokenized shipments, immutable milestone tracking, and automated settlements.
 By creating a zero-trust interface between logistics providers and their clients, Navin aims to ensure both parties access identical real-time data — removing information asymmetry and enabling seamless, dispute-free operations.
 
@@ -480,6 +482,7 @@ API_KEY_PREFIX=sk_
 | `npm run build` | Compile TypeScript to JavaScript in `dist/` |
 | `npm run start` | Run production build |
 | `npm run typecheck` | Run TypeScript type checker |
+| `npm run check:deps` | Check runtime imports against `package.json` dependencies |
 | `npm run lint` | Run ESLint and Prettier checks |
 | `npm run lint:fix` | Fix linting and formatting issues |
 | `npm test` | Run test suite (Jest) |

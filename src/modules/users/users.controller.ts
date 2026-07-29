@@ -1,6 +1,13 @@
 import type { RequestHandler } from 'express';
 import * as usersService from './users.service.js';
 import { sendResponse } from '../../shared/http/sendResponse.js';
+import type {
+  CreateUserBody,
+  CreateInvitationBody,
+  VerifyInvitationQuery,
+  AcceptInvitationBody,
+  ListUsersQuery,
+} from './users.validation.js';
 
 /**
  * Registers a password-less user under the caller's organization.
@@ -16,10 +23,11 @@ import { sendResponse } from '../../shared/http/sendResponse.js';
  * @throws {AppError} 409 EMAIL_TAKEN — when the email is already registered.
  */
 export const createUserController: RequestHandler = async (req, res) => {
+  const body = req.body as CreateUserBody;
   const user = await usersService.registerUser({
-    email: req.body.email,
-    name: req.body.name,
-    role: req.body.role,
+    email: body.email,
+    name: body.name,
+    role: body.role,
     organizationId: req.user?.organizationId,
   });
   sendResponse(res, 201, true, 'User registered successfully', user);
@@ -38,10 +46,11 @@ export const createUserController: RequestHandler = async (req, res) => {
  * @throws {AppError} 409 EMAIL_TAKEN — when the email is already registered.
  */
 export const createTeamMemberController: RequestHandler = async (req, res) => {
+  const body = req.body as CreateUserBody;
   const user = await usersService.createTeamMember({
-    email: req.body.email,
-    name: req.body.name,
-    role: req.body.role,
+    email: body.email,
+    name: body.name,
+    role: body.role,
     callerOrganizationId: req.user?.organizationId ?? '',
   });
   sendResponse(res, 201, true, 'Team member created successfully', user);
@@ -74,9 +83,10 @@ export const deleteUserController: RequestHandler = async (req, res) => {
  * @throws {AppError} 409 EMAIL_TAKEN — when the email is already registered.
  */
 export const createInvitationController: RequestHandler = async (req, res) => {
+  const body = req.body as CreateInvitationBody;
   const invitation = await usersService.generateInvitationLink({
-    email: req.body.email,
-    role: req.body.role,
+    email: body.email,
+    role: body.role,
     inviterUserId: req.user?.userId ?? '',
     inviterRole: req.user?.role,
     organizationId: req.user?.organizationId,
@@ -94,7 +104,8 @@ export const createInvitationController: RequestHandler = async (req, res) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when the query is missing/invalid.
  */
 export const verifyInvitationController: RequestHandler = async (req, res) => {
-  const invite = usersService.verifyInvitationToken(String(req.query.token));
+  const query = req.query as unknown as VerifyInvitationQuery;
+  const invite = usersService.verifyInvitationToken(query.token);
   sendResponse(res, 200, true, 'Invitation token verified successfully', invite);
 };
 
@@ -110,10 +121,11 @@ export const verifyInvitationController: RequestHandler = async (req, res) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when body validation fails.
  */
 export const acceptInvitationController: RequestHandler = async (req, res) => {
+  const body = req.body as AcceptInvitationBody;
   const user = await usersService.acceptInvitation({
-    token: req.body.token,
-    name: req.body.name,
-    password: req.body.password,
+    token: body.token,
+    name: body.name,
+    password: body.password,
   });
 
   sendResponse(res, 201, true, 'Invitation accepted successfully', user);
@@ -137,7 +149,7 @@ export const acceptInvitationController: RequestHandler = async (req, res) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when query validation fails.
  */
 export const listUsersController: RequestHandler = async (req, res) => {
-  const query = req.query as unknown as import('./users.validation.js').ListUsersQuery;
+  const query = req.query as unknown as ListUsersQuery;
   const result = await usersService.listOrganizationUsers({
     organizationId: req.user?.organizationId,
     role: req.user?.role,

@@ -23,6 +23,10 @@ import type {
   GetShipmentsQuery,
   ExportShipmentsQuery,
   ShipmentTimelineQuery,
+  ShipmentProofBody,
+  UploadDocumentBody,
+  UploadPhotoBody,
+  CreateDisputeBody,
 } from './shipments.validation.js';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
@@ -235,10 +239,7 @@ export const patchShipmentStatus = async (req: Request, res: Response) => {
  */
 export const uploadShipmentProof = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { recipientSignatureName, notes } = req.body as {
-    recipientSignatureName?: string;
-    notes?: string;
-  };
+  const { recipientSignatureName, notes } = req.body as ShipmentProofBody;
   const file = req.file;
 
   if (!file) {
@@ -252,16 +253,6 @@ export const uploadShipmentProof = async (req: Request, res: Response) => {
   });
 
   sendResponse(res, 200, true, 'Proof uploaded', shipment);
-};
-
-type DocumentBody = {
-  type:
-    | 'BILL_OF_LADING'
-    | 'CUSTOMS_DECLARATION'
-    | 'INSURANCE_CERTIFICATE'
-    | 'PACKING_LIST'
-    | 'INVOICE'
-    | 'OTHER';
 };
 
 /**
@@ -282,7 +273,7 @@ type DocumentBody = {
  */
 export const uploadShipmentDocument = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { type } = req.body as DocumentBody;
+  const { type } = req.body as UploadDocumentBody;
   const file = req.file;
 
   if (!file) {
@@ -328,7 +319,7 @@ export const uploadShipmentDocument = async (req: Request, res: Response) => {
  */
 export const uploadShipmentPhoto = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { caption } = req.body as { caption?: string };
+  const { caption } = req.body as UploadPhotoBody;
   const file = req.file;
 
   if (!file) {
@@ -371,7 +362,7 @@ export const uploadShipmentPhoto = async (req: Request, res: Response) => {
  */
 export const createDispute = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { type, description } = req.body as { type: string; description: string };
+  const { type, description } = req.body as CreateDisputeBody;
   const file = req.file;
 
   const dispute = await createDisputeService(id, file, {

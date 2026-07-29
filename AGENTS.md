@@ -81,6 +81,16 @@ Prefer domain events over direct service calls. Never import a sibling controlle
 - [ ] Swagger updated · `npm run build` passes · `npm test` passes
 - [ ] **AGENTS.md reviewed if conventions, boundaries, or module structure changed**
 
+### Clean-Install Build Triage (hard rule)
+
+Build triage must be based strictly on `package.json`, `package-lock.json`, and source files.
+
+- **Never** assume a package is available because it exists locally — CI runs `npm ci` from scratch.
+- If a new runtime import is added, it **must** go in `dependencies` (not `devDependencies`).
+- Run `npm run check:deps` before committing to catch undeclared imports.
+- To reproduce CI locally: `rm -rf node_modules && npm ci && npm run build`
+- CI pins Node.js 20 via `.github/workflows/typecheck.yml` and always uses `npm ci`.
+
 ## 9. Token Efficiency
 Read before you write. Batch parallel reads. Cite `file:line`. Prefer small diffs. Skip filler prose.
 
