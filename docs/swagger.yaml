@@ -2270,7 +2270,17 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     get:
       summary: List users
-      description: Returns a paginated list of users. Requires authentication and role (ADMIN/MANAGER/SUPER_ADMIN).
+      description: >-
+        Returns a paginated list of users within the caller's organization.
+        Requires authentication and ADMIN / MANAGER / SUPER_ADMIN role.
+
+        **Pagination modes** (mutually exclusive — sending both `cursor` and `page` is a 400):
+
+        * **Cursor mode** (`cursor` + `limit`) → `meta: { nextCursor, hasMore }`
+        * **Offset mode** (`page` + `limit`)   → `meta: { page, limit, total }`
+
+        **Filters** (`search`, `role`) work in both modes.
+        Unknown query params are silently ignored and do **not** cause a 400.
       security:
         - bearerAuth: []
       parameters:
@@ -2281,12 +2291,32 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
-          description: Maximum number of users to return per page
+          description: Maximum number of users per page
         - in: query
           name: cursor
           schema:
             type: string
-          description: Cursor for the next page (ObjectId of the last user from the previous page)
+          description: >-
+            Cursor for the next page in cursor mode (ObjectId of the last user
+            from the previous page). Mutually exclusive with `page`.
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: >-
+            1-based page number for offset pagination. Mutually exclusive with `cursor`.
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Case-insensitive substring search on `name` and `email`.
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [SUPER_ADMIN, ADMIN, MANAGER, DRIVER, VIEWER, CUSTOMER]
+          description: Filter results to users with this exact role.
       responses:
         '200':
           description: Users retrieved
@@ -2314,16 +2344,46 @@ paths:
                           type: string
                         organizationId:
                           type: string
+                        createdAt:
+                          type: string
+                          format: date-time
                   meta:
-                    type: object
-                    properties:
-                      total:
-                        type: integer
-                      hasMore:
-                        type: boolean
-                      nextCursor:
-                        type: string
-                        nullable: true
+                    oneOf:
+                      - description: Cursor mode meta
+                        type: object
+                        properties:
+                          nextCursor:
+                            type: string
+                            nullable: true
+                          hasMore:
+                            type: boolean
+                      - description: Offset mode meta
+                        type: object
+                        properties:
+                          page:
+                            type: integer
+                          limit:
+                            type: integer
+                          total:
+                            type: integer
+        '400':
+          description: Validation error (e.g. cursor and page both provided)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authorization token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden – insufficient role (must be ADMIN / MANAGER / SUPER_ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/users/team:
     post:
       summary: Create a user as a team member (admin only)

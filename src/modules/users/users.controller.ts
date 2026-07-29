@@ -120,12 +120,18 @@ export const acceptInvitationController: RequestHandler = async (req, res) => {
 };
 
 /**
- * Lists users in the caller's organization with cursor pagination.
+ * Lists users in the caller's organization with cursor or offset pagination,
+ * and optional search/role filters.
  * Requires auth and ADMIN / MANAGER / SUPER_ADMIN.
  *
  * @param req.query.limit - Page size (default 20, max 100).
- * @param req.query.cursor - Optional cursor for the next page.
- * @returns HTTP 200 with envelope `{ success, message, data, meta }` (`total`, `hasMore`, `nextCursor`).
+ * @param req.query.cursor - Optional cursor for the next page (cursor mode).
+ * @param req.query.page - Optional page number (offset mode, 1-based).
+ * @param req.query.search - Optional case-insensitive search on name/email.
+ * @param req.query.role - Optional role enum filter.
+ * @returns HTTP 200 with envelope `{ success, message, data, meta }`.
+ *   Cursor mode meta: `{ nextCursor, hasMore }`.
+ *   Offset mode meta: `{ page, limit, total }`.
  * @throws {AppError} 401 ERR_AUTH_INVALID — when JWT auth fails.
  * @throws {AppError} 403 ERR_PERMISSION_DENIED / FORBIDDEN — when role or organization context is insufficient.
  * @throws {AppError} 400 VALIDATION_ERROR — when query validation fails.
@@ -137,13 +143,16 @@ export const listUsersController: RequestHandler = async (req, res) => {
     role: req.user?.role,
     limit: query.limit,
     cursor: query.cursor,
+    page: query.page,
+    search: query.search,
+    filterRole: query.role,
   });
 
-  sendResponse(res, 200, true, 'Users retrieved successfully', result.data, {
-    total: result.total,
-    hasMore: result.hasMore,
-    nextCursor: result.nextCursor,
-  });
+  const meta = result.isOffsetMode
+    ? { page: result.page!, limit: result.limit!, total: result.total }
+    : { nextCursor: result.nextCursor, hasMore: result.hasMore };
+
+  sendResponse(res, 200, true, 'Users retrieved successfully', result.data, meta);
 };
 
 /**

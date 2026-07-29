@@ -54,17 +54,28 @@ export const AcceptInvitationBodySchema = z.object({
 /**
  * Query schema for `GET /api/users`.
  *
- * Business domain: admin/manager user directory listing with cursor pagination.
- * Cursor mode is preferred for growing org directories; limit is capped at 100
- * to keep directory responses UI-friendly. `.strict()` rejects unknown query keys
- * so typos (e.g. `page` instead of `cursor`) fail loudly rather than being ignored.
+ * Business domain: admin/manager user directory listing.
+ *
+ * Supports two pagination modes (see docs/PAGINATION.md):
+ *   - Cursor mode (`cursor`, `limit`) → `meta: { nextCursor, hasMore }`
+ *   - Offset mode (`page`, `limit`)   → `meta: { page, limit, total }`
+ *
+ * Sending both `cursor` and `page` is a 400 validation error.
+ * Additional filters: `search` (case-insensitive name/email), `role` (enum).
+ * Unknown query params are silently stripped (no `.strict()`) so future params
+ * added by the frontend do not cause spurious 400 responses.
  */
 export const ListUsersQuerySchema = z
   .object({
-    limit: z.coerce.number().min(1).max(100).default(20),
-    cursor: z.string().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    cursor: z.string().trim().optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    search: z.string().trim().optional(),
+    role: z.nativeEnum(UserRole).optional(),
   })
-  .strict();
+  .refine(data => !(data.cursor && data.page !== undefined), {
+    message: 'Use either cursor or page for pagination, not both.',
+  });
 
 export type CreateUserBody = z.infer<typeof CreateUserBodySchema>;
 export type CreateInvitationBody = z.infer<typeof CreateInvitationBodySchema>;
