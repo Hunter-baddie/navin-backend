@@ -7,6 +7,7 @@ import {
   resetPassword,
   refreshToken,
   registerCompany,
+  setup2fa,
 } from './auth.service.js';
 import { sendResponse } from '../../shared/http/sendResponse.js';
 
@@ -21,7 +22,11 @@ import { sendResponse } from '../../shared/http/sendResponse.js';
  * @throws {AppError} 409 EMAIL_TAKEN — when the email is already registered.
  */
 export const signupController: RequestHandler = async (req, res) => {
-  const result = await signup(req.body);
+  const ctx = {
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+  };
+  const result = await signup(req.body, ctx);
   sendResponse(res, 201, true, 'Account created successfully', result);
 };
 
@@ -34,7 +39,11 @@ export const signupController: RequestHandler = async (req, res) => {
  * @throws {AppError} 401 INVALID_CREDENTIALS — when email or password is incorrect.
  */
 export const loginController: RequestHandler = async (req, res) => {
-  const result = await login(req.body);
+  const ctx = {
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+  };
+  const result = await login(req.body, ctx);
   sendResponse(res, 200, true, 'Login successful', result);
 };
 
@@ -111,4 +120,25 @@ export const refreshController: RequestHandler = async (req, res) => {
 export const registerCompanyController: RequestHandler = async (req, res) => {
   const result = await registerCompany(req.body);
   sendResponse(res, 201, true, 'Company and admin user created successfully', result);
+};
+
+/**
+ * Generates a TOTP secret and returns a QR code data URL for authenticator-app setup.
+ * Requires an authenticated JWT (`requireAuth`).
+ *
+ * Does NOT enable 2FA — that happens in the subsequent verify step.
+ *
+ * @returns HTTP 200 with envelope `{ success, message, data: { qrCodeUrl } }`.
+ * @throws {AppError} 401 ERR_AUTH_INVALID — when the JWT is missing, invalid, or revoked.
+ */
+export const setup2faController: RequestHandler = async (req, res) => {
+  const { userId } = req.user!;
+  const result = await setup2fa(userId);
+  sendResponse(
+    res,
+    200,
+    true,
+    '2FA setup initiated. Scan the QR code with your authenticator app.',
+    result
+  );
 };

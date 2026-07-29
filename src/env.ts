@@ -43,12 +43,20 @@ const EnvSchema = z.object({
   TWILIO_TOKEN: z.string().min(1).optional(),
   TWILIO_FROM: z.string().min(1).optional(),
 
+  // Storage provider (mock, s3, r2, cloudinary)
+  STORAGE_PROVIDER: z.enum(['mock', 's3', 'r2', 'cloudinary']).default('mock'),
+
   // S3 storage
   S3_BUCKET: z.string().min(1).optional(),
   S3_ENDPOINT: z.string().url('S3_ENDPOINT must be a valid URL').optional(),
   S3_ACCESS_KEY: z.string().min(1).optional(),
   S3_SECRET_KEY: z.string().min(1).optional(),
   S3_REGION: z.string().min(1).optional(),
+
+  // Cloudinary storage
+  CLOUDINARY_CLOUD_NAME: z.string().min(1).optional(),
+  CLOUDINARY_API_KEY: z.string().min(1).optional(),
+  CLOUDINARY_API_SECRET: z.string().min(1).optional(),
 
   // Stellar Soroban / Escrow
   SOROBAN_RPC_URL: z.string().url('SOROBAN_RPC_URL must be a valid URL').optional(),
@@ -63,6 +71,14 @@ const EnvSchema = z.object({
   // Email (additional)
   SMTP_FROM: z.string().email('SMTP_FROM must be a valid email').optional(),
   SENDGRID_API_KEY: z.string().optional(),
+  // TOTP 2FA — AES-256 encryption key for TOTP secrets stored in MongoDB.
+  // Must be exactly 32 bytes (64 hex characters). Generate with:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  TOTP_ENCRYPTION_KEY: z
+    .string()
+    .trim()
+    .regex(/^[0-9a-fA-F]{64}$/, 'TOTP_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)')
+    .optional(),
 });
 
 const parsedEnv = EnvSchema.safeParse(process.env);

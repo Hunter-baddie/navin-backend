@@ -17,7 +17,13 @@ const UserSchema = new mongoose.Schema(
     walletAddress: { type: String, required: false },
     phone: { type: String, required: false },
     phoneVerified: { type: Boolean, default: false },
+    twoFactorSecret: { type: String, required: false },
+    twoFactorEnabled: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
+    // 2FA / TOTP fields
+    totpSecret: { type: String, required: false, default: null },
+    totpEnabled: { type: Boolean, default: false },
+    totpBackupCodes: { type: [String], default: [] },
   },
   {
     timestamps: true,

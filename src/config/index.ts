@@ -30,12 +30,20 @@ export const config = {
     token: env.TWILIO_TOKEN,
     from: env.TWILIO_FROM,
   },
+  storage: {
+    provider: env.STORAGE_PROVIDER,
+  },
   s3: {
     bucket: env.S3_BUCKET,
     endpoint: env.S3_ENDPOINT,
     accessKey: env.S3_ACCESS_KEY,
     secretKey: env.S3_SECRET_KEY,
     region: env.S3_REGION,
+  },
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
   },
   sorobanRpcUrl: env.SOROBAN_RPC_URL,
   escrowContractId: env.ESCROW_CONTRACT_ID,
@@ -45,4 +53,5 @@ export const config = {
   frontendUrl: env.FRONTEND_URL,
 
   sendgridApiKey: env.SENDGRID_API_KEY,
+  totpEncryptionKey: env.TOTP_ENCRYPTION_KEY,
 } as const;
