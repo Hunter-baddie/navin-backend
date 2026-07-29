@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { authenticator } from 'otplib';
+import { generateSecret, generateURI, verifySync } from 'otplib';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import { UserModel } from '../users/users.model.js';
 
@@ -52,12 +52,12 @@ export async function setup2fa(userId: string): Promise<{ otpauthUrl: string; se
     throw new AppError(409, '2FA is already enabled', ErrorCodes.TOTP_ALREADY_ENABLED);
   }
 
-  const secret = authenticator.generateSecret();
+  const secret = generateSecret();
 
   // Store the pending secret (not yet active — totpEnabled stays false)
   await UserModel.findByIdAndUpdate(userId, { totpSecret: secret });
 
-  const otpauthUrl = authenticator.keyuri(user.email as string, 'Navin', secret);
+  const otpauthUrl = generateURI({ label: user.email as string, issuer: 'Navin', secret });
 
   return { otpauthUrl, secret };
 }
@@ -96,8 +96,8 @@ export async function verify2fa(userId: string, code: string): Promise<{ backupC
     throw new AppError(409, '2FA is already enabled', ErrorCodes.TOTP_ALREADY_ENABLED);
   }
 
-  const isValid = authenticator.verify({ token: code, secret: user.totpSecret as string });
-  if (!isValid) {
+  const verifyResult = verifySync({ token: code, secret: user.totpSecret as string });
+  if (!verifyResult.valid) {
     throw new AppError(400, 'Invalid TOTP code', ErrorCodes.TOTP_INVALID_CODE);
   }
 

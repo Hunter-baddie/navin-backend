@@ -23,6 +23,14 @@ import type {
   GetShipmentsQuery,
   ExportShipmentsQuery,
   ShipmentTimelineQuery,
+  ShipmentProofBody,
+  UploadDocumentBody,
+  UploadPhotoBody,
+  CreateDisputeBody,
+  CreateShipmentInput,
+  ShipmentIdParam,
+  ShipmentPatchBody,
+  ShipmentStatusInput,
 } from './shipments.validation.js';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
@@ -108,7 +116,7 @@ export const getShipments = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when the id param is invalid.
  */
 export const getShipmentById = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as unknown as ShipmentIdParam;
   const shipment = await getShipmentByIdService(id, {
     organizationId: req.user?.organizationId,
     role: req.user?.role,
@@ -130,7 +138,7 @@ export const getShipmentById = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when params/query validation fails.
  */
 export const getShipmentTimeline = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as unknown as ShipmentIdParam;
   const query = req.query as unknown as ShipmentTimelineQuery;
   const { cursor, limit = 20 } = query;
   const { data, nextCursor, hasMore } = await getShipmentTimelineService(id, {
@@ -157,7 +165,8 @@ export const getShipmentTimeline = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when body validation fails.
  */
 export const createShipment = async (req: Request, res: Response) => {
-  const shipment = await createShipmentService({ ...req.body, actorUserId: req.user?.userId });
+  const body = req.body as CreateShipmentInput;
+  const shipment = await createShipmentService({ ...body, actorUserId: req.user?.userId });
   sendResponse(res, 201, true, 'Shipment created', shipment);
 };
 
@@ -172,8 +181,8 @@ export const createShipment = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when params/body validation fails.
  */
 export const patchShipment = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { offChainMetadata } = req.body;
+  const { id } = req.params as unknown as ShipmentIdParam;
+  const { offChainMetadata } = req.body as ShipmentPatchBody;
   const shipment = await patchShipmentService(id, offChainMetadata);
   if (!shipment) {
     sendResponse(res, 404, false, 'Shipment not found', null);
@@ -194,8 +203,8 @@ export const patchShipment = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when params/body validation fails.
  */
 export const patchShipmentStatus = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { status } = req.body;
+  const { id } = req.params as unknown as ShipmentIdParam;
+  const { status } = req.body as ShipmentStatusInput;
 
   if (!status || typeof status !== 'string') {
     sendResponse(res, 400, false, 'Missing status', null);
@@ -234,11 +243,8 @@ export const patchShipmentStatus = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when params/body validation fails.
  */
 export const uploadShipmentProof = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { recipientSignatureName, notes } = req.body as {
-    recipientSignatureName?: string;
-    notes?: string;
-  };
+  const { id } = req.params as unknown as ShipmentIdParam;
+  const { recipientSignatureName, notes } = req.body as ShipmentProofBody;
   const file = req.file;
 
   if (!file) {
@@ -252,16 +258,6 @@ export const uploadShipmentProof = async (req: Request, res: Response) => {
   });
 
   sendResponse(res, 200, true, 'Proof uploaded', shipment);
-};
-
-type DocumentBody = {
-  type:
-    | 'BILL_OF_LADING'
-    | 'CUSTOMS_DECLARATION'
-    | 'INSURANCE_CERTIFICATE'
-    | 'PACKING_LIST'
-    | 'INVOICE'
-    | 'OTHER';
 };
 
 /**
@@ -281,8 +277,8 @@ type DocumentBody = {
  * @throws {AppError} 400 VALIDATION_ERROR — when params/body validation fails.
  */
 export const uploadShipmentDocument = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { type } = req.body as DocumentBody;
+  const { id } = req.params as unknown as ShipmentIdParam;
+  const { type } = req.body as UploadDocumentBody;
   const file = req.file;
 
   if (!file) {
@@ -327,8 +323,8 @@ export const uploadShipmentDocument = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when params/body validation fails.
  */
 export const uploadShipmentPhoto = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { caption } = req.body as { caption?: string };
+  const { id } = req.params as unknown as ShipmentIdParam;
+  const { caption } = req.body as UploadPhotoBody;
   const file = req.file;
 
   if (!file) {
@@ -370,8 +366,8 @@ export const uploadShipmentPhoto = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when params/body validation fails.
  */
 export const createDispute = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { type, description } = req.body as { type: string; description: string };
+  const { id } = req.params as unknown as ShipmentIdParam;
+  const { type, description } = req.body as CreateDisputeBody;
   const file = req.file;
 
   const dispute = await createDisputeService(id, file, {
@@ -436,7 +432,7 @@ export const exportShipments = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when the id param is invalid.
  */
 export const deleteShipment = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as unknown as ShipmentIdParam;
   const shipment = await deleteShipmentService(id);
 
   if (!shipment) {
@@ -460,7 +456,7 @@ export const deleteShipment = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when the id param is invalid.
  */
 export const getShipmentEta = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id } = req.params as unknown as ShipmentIdParam;
   const eta = await getShipmentEtaService(id);
   sendResponse(res, 200, true, 'Shipment ETA retrieved', eta);
 };

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserRole } from '../../shared/constants/index.js';
+import { PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE, UserRole } from '../../shared/constants/index.js';
 
 /**
  * Body schema for `POST /api/company/invitations`.
@@ -39,11 +39,14 @@ export type InvitationIdParam = z.infer<typeof InvitationIdParamSchema>;
 /**
  * Body schema for `POST /api/company/invitations/accept`.
  * Accept an invitation and create user account.
+ *
+ * Password policy uses `PASSWORD_MIN_LENGTH` (same constant as users.validation.ts)
+ * so the two accept flows enforce identical credentials requirements.
  */
 export const AcceptInvitationBodySchema = z.object({
   token: z.string().min(1),
   name: z.string().min(1),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE),
 });
 
 /**
@@ -55,6 +58,10 @@ export const InvitationInfoQuerySchema = z.object({
 });
 
 export type CreateInvitationInput = z.infer<typeof CreateInvitationBodySchema>;
+/** Alias for `CreateInvitationInput` — preferred for controllers that follow the `*Body` naming. */
+export type CreateInvitationBody = CreateInvitationInput;
 export type ListInvitationsQuery = z.infer<typeof ListInvitationsQuerySchema>;
 export type AcceptInvitationInput = z.infer<typeof AcceptInvitationBodySchema>;
+/** Alias for `AcceptInvitationInput` — preferred for controllers that follow the `*Body` naming. */
+export type AcceptInvitationBody = AcceptInvitationInput;
 export type InvitationInfoQuery = z.infer<typeof InvitationInfoQuerySchema>;

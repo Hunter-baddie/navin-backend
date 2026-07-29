@@ -22,7 +22,6 @@ import {
   resetPasswordController,
   refreshController,
   registerCompanyController,
-  setup2faController,
 } from './auth.controller.js';
 import {
   createApiKeyController,
@@ -132,6 +131,7 @@ authRouter.post(
   '/2fa/backup-codes/regenerate',
   asyncHandler(requireAuth),
   asyncHandler(regenerateBackupCodesController)
+);
 // Session management routes (protected by JWT auth)
 authRouter.get('/sessions', asyncHandler(requireAuth), asyncHandler(listSessionsController));
 authRouter.delete(

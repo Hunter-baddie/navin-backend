@@ -1,5 +1,5 @@
 import { Shipment } from './shipments.model.js';
-import type { FilterQuery } from 'mongoose';
+import type { FilterQuery, SortOrder } from 'mongoose';
 import { tokenizeShipment, releaseEscrow } from '../../services/stellar.service.js';
 import { uploadFileToStorage, deleteFileFromStorage } from '../../services/storage/upload.js';
 import {
@@ -186,10 +186,10 @@ export const findShipments = async (
   query: FilterQuery<unknown>,
   skip: number,
   limit: number,
-  sort: Record<string, 1 | -1> = { createdAt: -1, _id: -1 }
+  sort: Record<string, SortOrder> = { createdAt: -1, _id: -1 }
 ): Promise<IShipment[]> => {
   return Shipment.find(query)
-    .sort(sort as any)
+    .sort(sort)
     .skip(skip)
     .limit(limit)
     .lean();
@@ -272,7 +272,7 @@ export const getShipmentsService = async (params: {
     query.priority = priorities.length === 1 ? priorities[0] : { $in: priorities };
   }
 
-  const sort: Record<string, 1 | -1> = {};
+  const sort: Record<string, SortOrder> = {};
   if (sortBy) {
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
   } else {
