@@ -78,12 +78,18 @@ export interface ListOrganizationUsersResult {
   total: number;
   hasMore: boolean;
   nextCursor: string | null;
+  page?: number;
+  limit?: number;
+  /** true when offset (page) mode was used — affects meta shape in the controller */
+  isOffsetMode: boolean;
 }
 
 /**
  * Lists users within an organization for an authorized role.
- * @param {{organizationId?: string; role?: string; limit?: number; cursor?: string}} input - Organization and role scope.
- * @returns {Promise<ListOrganizationUsersResult>} Paginated organization users matching the role and org.
+ * Supports cursor pagination (cursor/limit) and offset pagination (page/limit).
+ * Optionally filters by search (name/email case-insensitive) and role.
+ * @param input - Organization and filter scope.
+ * @returns Paginated organization users.
  * @throws {AppError} When authorization or organization context is missing.
  */
 export async function listOrganizationUsers(input: {
@@ -91,6 +97,9 @@ export async function listOrganizationUsers(input: {
   role?: string;
   limit?: number;
   cursor?: string;
+  page?: number;
+  search?: string;
+  filterRole?: string;
 }): Promise<ListOrganizationUsersResult> {
   const allowedRoles = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER];
 
@@ -102,16 +111,35 @@ export async function listOrganizationUsers(input: {
     throw new AppError(403, 'Organization context is required', 'FORBIDDEN');
   }
 
-  const page = await findUsersByOrganizationId(input.organizationId, {
+  const result = await findUsersByOrganizationId(input.organizationId, {
     limit: input.limit,
     cursor: input.cursor,
+    page: input.page,
+    search: input.search,
+    role: input.filterRole,
   });
 
+  // Offset mode (page provided)
+  if (input.page !== undefined) {
+    return {
+      data: result.data,
+      total: result.total,
+      hasMore: false,
+      nextCursor: null,
+      page: input.page,
+      limit: input.limit ?? 20,
+      isOffsetMode: true,
+    };
+  }
+
+  // Cursor mode
+  const cursorResult = result as import('./users.repo.js').UsersPage;
   return {
-    data: page.data,
-    total: page.total,
-    hasMore: page.hasMore,
-    nextCursor: page.nextCursor,
+    data: cursorResult.data,
+    total: cursorResult.total,
+    hasMore: cursorResult.hasMore,
+    nextCursor: cursorResult.nextCursor,
+    isOffsetMode: false,
   };
 }
 
