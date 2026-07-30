@@ -14,6 +14,8 @@ export const config = {
   allowedOrigins,
   redisUrl: env.REDIS_URL,
   corsOrigin: env.CORS_ORIGIN,
+
+  // SMTP (email)
   frontendUrl: env.FRONTEND_URL,
   smtp: {
     host: env.SMTP_HOST,
@@ -46,5 +48,10 @@ export const config = {
   sorobanRpcUrl: env.SOROBAN_RPC_URL,
   escrowContractId: env.ESCROW_CONTRACT_ID,
   sentryDsn: env.SENTRY_DSN,
+
+  // Frontend
+  frontendUrl: env.FRONTEND_URL,
+
+  sendgridApiKey: env.SENDGRID_API_KEY,
   totpEncryptionKey: env.TOTP_ENCRYPTION_KEY,
 } as const;

@@ -110,6 +110,7 @@ export const updatePaymentStatusController = asyncHandler(
 );
 
 /**
+ * GET /api/settlements/:id — full settlement detail including escrowRelease.
  * GET settlement detail including escrow/release fields.
  * Requires authentication. Used by `GET /:id` on the payments/settlements router.
  *
@@ -127,6 +128,8 @@ export const getSettlementByIdController = asyncHandler(
 );
 
 /**
+ * POST /api/settlements/:id/dispute — transition status to DISPUTED.
+ * Restricted to ADMIN / MANAGER at route level.
  * Transitions a settlement to DISPUTED with a required reason.
  * Requires auth and ADMIN / MANAGER.
  *
@@ -148,6 +151,7 @@ export const disputeSettlementController = asyncHandler(
 );
 
 /**
+ * GET /api/settlements/summary — aggregated totals + sparkline.
  * Returns aggregated settlement totals and sparkline for a period.
  * Requires authentication.
  *
@@ -160,6 +164,10 @@ export const disputeSettlementController = asyncHandler(
 export const getSettlementSummaryController = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const period = (req.query as Record<string, string>).period ?? 'week';
+    const summary = await getSettlementSummaryService(
+      req.user?.organizationId ?? '',
+      period
+    );
     const summary = await getSettlementSummaryService(req.user?.organizationId ?? '', period);
     sendResponse(res, 200, true, 'Settlement summary retrieved successfully', summary);
   }
