@@ -76,7 +76,7 @@ describe('GET /api/ledger/blocks controller', () => {
     );
   });
 
-  it('throws 404 when no ledger blocks match filters', async () => {
+  it('returns 200 with empty array when no ledger blocks match filters', async () => {
     getLedgerBlocksServiceMock.mockResolvedValue({
       data: [],
       nextCursor: null,
@@ -90,8 +90,14 @@ describe('GET /api/ledger/blocks controller', () => {
       json: jest.fn(),
     } as any;
 
-    const run = getLedgerBlocks(req, res);
-    await expect(run).rejects.toBeInstanceOf(AppError);
-    await expect(run).rejects.toMatchObject({ statusCode: 404 });
+    await getLedgerBlocks(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      data: [],
+      nextCursor: null,
+      hasMore: false,
+      total: 0,
+    });
   });
 });

@@ -1,12 +1,6 @@
-# API Key Management Migration: TODO
+# Ledger - Return 200 empty array instead of 404
 
-- [x] Step 0: Create TODO.md (tracking)
-- [ ] Step 1: Create `src/modules/api-keys/apiKey.validation.ts`
-- [ ] Step 2: Create `src/modules/api-keys/apiKey.controller.ts`
-- [ ] Step 3: Create `src/modules/api-keys/apiKey.routes.ts`
-- [ ] Step 4: Modify `src/modules/auth/apiKey.service.ts` (add helper for new response shape)
-- [ ] Step 5: Modify `src/app.ts` to mount `/api/company/api-keys`
-- [ ] Step 6: Add deprecation comments in `src/modules/auth/auth.routes.ts`
-- [ ] Step 7: Create test file `tests/api-keys.company.test.ts`
-- [ ] Step 8: Run lint/tests to verify
+- [x] Step 1: Remove `if (result.data.length === 0)` 404 throw in `ledger.controller.ts`
+- [x] Step 2: Update test in `ledger.blocks.controller.test.ts` to expect 200 with empty data
+- [x] Step 3: Run `npx jest tests/ledger.blocks.controller.test.ts` to verify
 

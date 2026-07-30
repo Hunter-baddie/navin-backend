@@ -26,10 +26,6 @@ export const getLedgerBlocks = async (req: Request, res: Response) => {
     cursor,
   });
 
-  if (result.data.length === 0) {
-    throw new AppError(404, 'No ledger blocks found', ErrorCodes.LEDGER_BLOCK_NOT_FOUND);
-  }
-
   return res.status(200).json({
     data: result.data,
     nextCursor: result.nextCursor,
