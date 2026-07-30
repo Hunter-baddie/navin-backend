@@ -33,6 +33,7 @@ import { shipmentTemplatesRouter } from './modules/shipment-templates/shipment-t
 import { ledgerRouter } from './modules/ledger/ledger.routes.js';
 import { eventsRouter } from './modules/events/events.routes.js';
 import { notificationsRouter } from './modules/notifications/notifications.routes.js';
+import { apiKeysRouter } from './modules/api-keys/apiKey.routes.js';
 
 const swaggerDocumentPath = fileURLToPath(new URL('../docs/swagger.yaml', import.meta.url));
 
@@ -73,6 +74,7 @@ export function buildApp() {
   app.use('/api/users', usersRouter);
   app.use('/api/organizations', organizationsRouter);
   app.use('/api/company/invitations', invitationsRouter);
+  app.use('/api/company/api-keys', apiKeysRouter);
   app.use('/api/shipments', shipmentsRouter);
   app.use('/api/payments', paymentsRouter);
   app.use('/api/settlements', paymentsRouter);

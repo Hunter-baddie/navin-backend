@@ -82,7 +82,10 @@ authRouter.post(
 // 2FA setup (protected by JWT auth)
 authRouter.post('/2fa/setup', asyncHandler(requireAuth), asyncHandler(setup2faController));
 
-// API Key management routes (protected by JWT auth + admin role)
+// ── API Key management (DEPRECATED — use /api/company/api-keys) ────────────────
+// These routes are kept as aliases for backward compatibility.
+// New implementations should use the company-scoped routes at /api/company/api-keys
+// which derive organizationId from JWT and follow the v2 response shape.
 authRouter.post(
   '/api-keys',
   asyncHandler(requireAuth),
