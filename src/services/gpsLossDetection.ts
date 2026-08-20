@@ -84,10 +84,7 @@ export async function detectGpsLoss(
 
     return { hasGpsLoss: false, consecutiveCount };
   } catch (error) {
-    logger.error(
-      { err: error, shipmentId },
-      'Error detecting GPS loss'
-    );
+    logger.error({ err: error, shipmentId }, 'Error detecting GPS loss');
     return { hasGpsLoss: false, consecutiveCount: 0 };
   }
 }

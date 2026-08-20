@@ -11,15 +11,11 @@ import { logger } from '../../shared/logger/logger.js';
 import { sendEmail, invitationEmailHtml } from '../../services/email.service.js';
 import {
   createInvitation,
-  findInvitationByTokenHash,
   findInvitationById,
-  findInvitationsByOrganizationId,
   updateInvitationByTokenHash,
   revokeInvitation,
-  softDeleteInvitation,
 } from './invitations.repo.js';
 import { InvitationModel, InvitationStatus } from './invitations.model.js';
-import type { CreateInvitationInput } from './invitations.validation.js';
 
 const INVITE_EXPIRY_SECONDS = 48 * 60 * 60; // 48 hours
 
@@ -79,7 +75,11 @@ export async function createAndSendInvitation(input: {
 
   const allowedRoles = allowedByRole[input.inviterRole] ?? [];
   if (!allowedRoles.includes(input.role)) {
-    throw new AppError(403, 'Forbidden: insufficient role to invite this role', ErrorCodes.FORBIDDEN);
+    throw new AppError(
+      403,
+      'Forbidden: insufficient role to invite this role',
+      ErrorCodes.FORBIDDEN
+    );
   }
 
   // Check email not already in use
@@ -210,7 +210,11 @@ export async function resendInvitation(invitationId: string, organizationId: str
   }
 
   if (invitation.status !== InvitationStatus.PENDING) {
-    throw new AppError(400, `Cannot resend ${invitation.status} invitation`, ErrorCodes.BAD_REQUEST);
+    throw new AppError(
+      400,
+      `Cannot resend ${invitation.status} invitation`,
+      ErrorCodes.BAD_REQUEST
+    );
   }
 
   // Generate new token

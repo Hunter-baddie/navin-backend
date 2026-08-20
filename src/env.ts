@@ -68,9 +68,6 @@ const EnvSchema = z.object({
   // Frontend
   FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').default('http://localhost:3000'),
 
-  // Email (additional)
-  SMTP_FROM: z.string().email('SMTP_FROM must be a valid email').optional(),
-  SENDGRID_API_KEY: z.string().optional(),
   // TOTP 2FA — AES-256 encryption key for TOTP secrets stored in MongoDB.
   // Must be exactly 32 bytes (64 hex characters). Generate with:
   //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"

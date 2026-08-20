@@ -1,7 +1,7 @@
 import { Shipment } from './shipments.model.js';
 import type { FilterQuery, SortOrder } from 'mongoose';
 import { tokenizeShipment, releaseEscrow } from '../../services/stellar.service.js';
-import { uploadFileToStorage, deleteFileFromStorage } from '../../services/storage/upload.js';
+import { uploadFileToStorage } from '../../services/storage/upload.js';
 import {
   generateProofKey,
   generateDocumentKey,
@@ -188,11 +188,7 @@ export const findShipments = async (
   limit: number,
   sort: Record<string, SortOrder> = { createdAt: -1, _id: -1 }
 ): Promise<IShipment[]> => {
-  return Shipment.find(query)
-    .sort(sort)
-    .skip(skip)
-    .limit(limit)
-    .lean();
+  return Shipment.find(query).sort(sort).skip(skip).limit(limit).lean();
 };
 
 /**
@@ -316,10 +312,7 @@ export const getShipmentByIdService = async (
 };
 
 export type ShipmentTimelineEventType =
-  | 'STATUS_CHANGE'
-  | 'TELEMETRY_ANCHORED'
-  | 'ANOMALY_DETECTED'
-  | 'PROOF_UPLOADED';
+  'STATUS_CHANGE' | 'TELEMETRY_ANCHORED' | 'ANOMALY_DETECTED' | 'PROOF_UPLOADED';
 
 export interface ShipmentTimelineEvent {
   type: ShipmentTimelineEventType;

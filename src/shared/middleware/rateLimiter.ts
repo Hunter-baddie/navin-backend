@@ -28,7 +28,6 @@ function tryGetRedis(): RedisLike | null {
   try {
     // Dynamic import via module resolution — works in ESM because we import
     // the already-resolved module cache reference at call time.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
 
     const mod = require('../../infra/redis/connection.js') as {
       getRedisClient?: () => RedisLike;
@@ -194,9 +193,6 @@ export const loginLimiter = rateLimit({
       : Math.ceil(15 * 60);
 
     res.setHeader('Retry-After', String(retryAfter));
-    sendResponse(res, 429, false, 'Too many login attempts, please try again later.', null, undefined, {
-      retryAfter,
-    });
     sendResponse(
       res,
       429,

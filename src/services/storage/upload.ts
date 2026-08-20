@@ -4,7 +4,7 @@
  */
 
 import { getStorageAdapter, StorageError } from './index.js';
-import { AppError, ErrorCodes } from '../../shared/http/errors.js';
+import { AppError } from '../../shared/http/errors.js';
 import { logger } from '../../shared/logger/logger.js';
 
 /**
@@ -42,11 +42,7 @@ export async function uploadFileToStorage(
 
     logger.error({ err: error, key }, 'Unexpected error during file upload');
 
-    throw new AppError(
-      503,
-      'File upload failed. Please try again later.',
-      'STORAGE_ERROR'
-    );
+    throw new AppError(503, 'File upload failed. Please try again later.', 'STORAGE_ERROR');
   }
 }
 
@@ -91,10 +87,7 @@ export async function getSignedUrl(key: string, expiresInSeconds: number = 3600)
 
     return await adapter.getSignedUrl(key, expiresInSeconds);
   } catch (error) {
-    logger.warn(
-      { err: error, key },
-      'Failed to generate signed URL (falling back to public URL)'
-    );
+    logger.warn({ err: error, key }, 'Failed to generate signed URL (falling back to public URL)');
     return '';
   }
 }

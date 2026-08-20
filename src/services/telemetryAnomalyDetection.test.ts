@@ -8,9 +8,7 @@ import mongoose from 'mongoose';
 import { Telemetry } from '../modules/telemetry/telemetry.model.js';
 import { Shipment } from '../modules/shipments/shipments.model.js';
 import { TelemetryThreshold } from '../modules/telemetry/telemetryThreshold.model.js';
-import {
-  detectTelemetryAnomalies,
-} from './telemetryAnomalyDetection.js';
+import { detectTelemetryAnomalies } from './telemetryAnomalyDetection.js';
 import { detectGpsLoss, GPS_LOSS_THRESHOLD } from './gpsLossDetection.js';
 import { connectMongo, disconnectMongo } from '../infra/mongo/connection.js';
 

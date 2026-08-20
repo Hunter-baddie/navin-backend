@@ -10,7 +10,6 @@ import {
   type AnalyticsSummary,
 } from './analytics.cache.js';
 import type { PipelineStage } from 'mongoose';
-import { ShipmentStatus } from '../../shared/types/shipment.js';
 
 import type { PerformanceQuery } from './analytics.validation.js';
 
@@ -247,19 +246,20 @@ export async function getAnalyticsPerformance(
   return result;
 }
 
-
 /**
  * Calculates KPI summary with 30-day sparklines for dashboard.
  * Aggregates last 60 days of shipments and computes current vs previous 30-day periods.
  * Results are cached for 5 minutes.
- * 
+ *
  * @param {Object} params - Parameters
  * @param {string} params.organizationId - Optional organization ID for scoped analytics
  * @returns {Promise<AnalyticsSummary>} Summary with all KPIs and sparklines
  */
-export async function getAnalyticsSummary(params: { organizationId?: string }): Promise<AnalyticsSummary> {
+export async function getAnalyticsSummary(params: {
+  organizationId?: string;
+}): Promise<AnalyticsSummary> {
   const cacheKey = analyticsSummaryCacheKey(params.organizationId);
-  
+
   const cached = await readAnalyticsSummaryCache(cacheKey);
   if (cached) {
     return cached;
@@ -322,21 +322,14 @@ export async function getAnalyticsSummary(params: { organizationId?: string }): 
           $cond: [
             { $ne: ['$deliveredTimestamp', null] },
             {
-              $divide: [
-                { $subtract: ['$deliveredTimestamp', '$createdAt'] },
-                1000 * 60 * 60 * 24,
-              ],
+              $divide: [{ $subtract: ['$deliveredTimestamp', '$createdAt'] }, 1000 * 60 * 60 * 24],
             },
             null,
           ],
         },
         // Period indicator
         period: {
-          $cond: [
-            { $gte: ['$createdAt', thirtyDaysAgo] },
-            'CURRENT',
-            'PREVIOUS',
-          ],
+          $cond: [{ $gte: ['$createdAt', thirtyDaysAgo] }, 'CURRENT', 'PREVIOUS'],
         },
         // Day of analysis for sparkline
         dayOfAnalysis: {
@@ -529,13 +522,17 @@ export async function getAnalyticsSummary(params: { organizationId?: string }): 
 
   // Calculate rates
   const onTimeDeliveryRate =
-    currentKpi.dispatchedCount > 0 ? (currentKpi.onTimeCount / currentKpi.dispatchedCount) * 100 : 0;
+    currentKpi.dispatchedCount > 0
+      ? (currentKpi.onTimeCount / currentKpi.dispatchedCount) * 100
+      : 0;
   const onTimeDeliveryRatePrev =
     previousKpi.dispatchedCount > 0
       ? (previousKpi.onTimeCount / previousKpi.dispatchedCount) * 100
       : 0;
   const disputeRate =
-    currentKpi.totalShipments > 0 ? (currentKpi.disputedCount / currentKpi.totalShipments) * 100 : 0;
+    currentKpi.totalShipments > 0
+      ? (currentKpi.disputedCount / currentKpi.totalShipments) * 100
+      : 0;
   const disputeRatePrev =
     previousKpi.totalShipments > 0
       ? (previousKpi.disputedCount / previousKpi.totalShipments) * 100
@@ -567,9 +564,7 @@ export async function getAnalyticsSummary(params: { organizationId?: string }): 
 
     if (dayData) {
       const rate =
-        dayData.dispatchedCount > 0
-          ? (dayData.onTimeCount / dayData.dispatchedCount) * 100
-          : 0;
+        dayData.dispatchedCount > 0 ? (dayData.onTimeCount / dayData.dispatchedCount) * 100 : 0;
       onTimeDeliverySparkline.push(Math.round(rate));
       averageTransitSparkline.push(
         dayData.avgTransitDays ? Math.round(dayData.avgTransitDays * 10) / 10 : 0

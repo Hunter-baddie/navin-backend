@@ -8,7 +8,6 @@ import YAML from 'yamljs';
 import { requestId } from './shared/middleware/requestId.js';
 import { notFound } from './shared/middleware/notFound.js';
 import { errorMiddleware } from './shared/http/errorMiddleware.js';
-import { standardLimiter, loginLimiter, strictLimiter, otpLimiter } from './shared/middleware/rateLimiter.js';
 import {
   standardLimiter,
   loginLimiter,

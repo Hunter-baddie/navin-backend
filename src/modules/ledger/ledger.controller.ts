@@ -1,7 +1,6 @@
 import type { Request, Response } from 'express';
 import * as ledgerService from './ledger.service.js';
 import type { GetLedgerBlocksQuery } from './ledger.validation.js';
-import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 
 /**
  * Lists ledger blocks with optional filters and cursor pagination.

@@ -5,7 +5,6 @@ import { getRedisClient } from '../../infra/redis/connection.js';
 import crypto from 'node:crypto';
 import { env } from '../../env.js';
 
-const OTP_LENGTH = 6;
 const OTP_TTL_SECONDS = 300; // 5 minutes
 
 function generateOtp(): string {
@@ -62,7 +61,11 @@ export async function sendOtpService(userId: string, phone: string): Promise<voi
       logger.info({ userId, phone }, 'OTP sent via Twilio');
     } catch (error) {
       logger.error({ error, userId, phone }, 'Failed to send OTP via Twilio');
-      throw new AppError(503, 'Failed to send OTP. Please try again later.', ErrorCodes.INTERNAL_ERROR);
+      throw new AppError(
+        503,
+        'Failed to send OTP. Please try again later.',
+        ErrorCodes.INTERNAL_ERROR
+      );
     }
   } else {
     // In dev/test, log the OTP

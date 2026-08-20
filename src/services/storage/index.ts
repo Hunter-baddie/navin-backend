@@ -11,7 +11,7 @@
  * - cloudinary: Cloudinary CDN (image-optimized)
  */
 
-import { StorageAdapter, StorageConfig, StorageError } from './types.js';
+import { StorageAdapter, StorageError } from './types.js';
 import { MockStorageAdapter } from './mockStorage.js';
 import { S3StorageAdapter } from './s3Storage.js';
 import { CloudinaryStorageAdapter } from './cloudinaryStorage.js';

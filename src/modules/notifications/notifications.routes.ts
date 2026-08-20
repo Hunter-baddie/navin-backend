@@ -14,19 +14,13 @@ import {
   getNotificationPreferencesController,
   updateNotificationPreferenceController,
 } from './notification-preferences.controller.js';
-import {
-  sendOtpController,
-  verifyOtpController,
-} from './sms-otp.controller.js';
+import { sendOtpController, verifyOtpController } from './sms-otp.controller.js';
 import {
   GetNotificationsQuerySchema,
   NotificationIdParamSchema,
 } from './notifications.validation.js';
 import { UpdateNotificationPreferenceBodySchema } from './notification-preferences.validation.js';
-import {
-  SendOtpBodySchema,
-  VerifyOtpBodySchema,
-} from './sms-otp.validation.js';
+import { SendOtpBodySchema, VerifyOtpBodySchema } from './sms-otp.validation.js';
 
 export const notificationsRouter = Router();
 

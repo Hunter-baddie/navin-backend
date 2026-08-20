@@ -197,34 +197,3 @@ export async function disputeSettlementService(id: string, input: DisputeSettlem
 
   return augmentPayment(updated);
 }
-
-/**
- * Transitions a settlement to DISPUTED status, recording dispute metadata.
- * Only ADMIN/MANAGER should be permitted to call this (enforced at route level).
- * @param {string} id - Settlement ObjectId.
- * @param {DisputeSettlementInput} input - Dispute reason and optional notes.
- * @returns {Promise<unknown>} Updated settlement document.
- * @throws {AppError} 404 when settlement not found.
- */
-export async function disputeSettlementService(id: string, input: DisputeSettlementInput) {
-  const payment = await paymentsRepo.getPaymentById(id);
-  if (!payment) {
-    throw new AppError(404, 'Settlement not found', ErrorCodes.PAYMENT_NOT_FOUND);
-  }
-
-  const updated = await paymentsRepo.disputePayment(id, input.reason, input.notes);
-  if (!updated) {
-    throw new AppError(500, 'Failed to dispute settlement', ErrorCodes.INTERNAL_ERROR);
-  }
-
-  emitPaymentStatusChange(updated.shipmentId.toString(), {
-    paymentId: updated._id.toString(),
-    shipmentId: updated.shipmentId.toString(),
-    oldStatus: payment.status,
-    newStatus: updated.status,
-    amount: updated.amount,
-    timestamp: new Date().toISOString(),
-  });
-
-  return augmentPayment(updated);
-}

@@ -16,7 +16,7 @@ import { logger } from '../../shared/logger/logger.js';
  * Dynamic import to avoid requiring aws-sdk at build time.
  * Users must install @aws-sdk/client-s3 to use S3/R2 adapter.
  */
-async function getS3Client(config: {
+async function getS3Client(_config: {
   region: string;
   endpoint?: string;
   accessKey: string;
@@ -133,10 +133,7 @@ export class S3StorageAdapter implements StorageAdapter {
       await this.client.send(command);
       logger.debug(`File deleted from ${this.config.provider}: ${key}`);
     } catch (error) {
-      logger.warn(
-        { err: error, key },
-        `Failed to delete file from ${this.config.provider}`
-      );
+      logger.warn({ err: error, key }, `Failed to delete file from ${this.config.provider}`);
       // Don't throw on delete failure — it's not critical
     }
   }

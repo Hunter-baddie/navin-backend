@@ -33,6 +33,10 @@ const declared = new Set([
   ...Object.keys(pkg.dependencies ?? {}),
   // devDependencies intentionally excluded — runtime imports must be in dependencies
 ]);
+const declaredDev = new Set(Object.keys(pkg.devDependencies ?? {}));
+
+// Test-only packages that are expected in src/**/__tests__/** or *.test.ts files
+const isTestFile = (filePath) => filePath.includes('__tests__') || filePath.endsWith('.test.ts');
 
 // Node.js built-in modules — never need to be in package.json
 const BUILTINS = new Set([
@@ -99,10 +103,13 @@ const undeclared = new Set();
 for (const file of files) {
   const source = readFileSync(file, 'utf8');
   for (const pkg of extractPackageNames(source)) {
-    if (!BUILTINS.has(pkg) && !declared.has(pkg)) {
-      undeclared.add(pkg);
-      console.error(`  [UNDECLARED] "${pkg}" — imported in ${file.replace(ROOT + '/', '')}`);
-    }
+    if (BUILTINS.has(pkg) || declared.has(pkg)) continue;
+    // Allow devDependencies in test files and for known test-infra in src/
+    if (isTestFile(file) && declaredDev.has(pkg)) continue;
+    // mongodb-memory-server is imported in src/infra/mongo/connection.ts for test/dev only
+    if (pkg === 'mongodb-memory-server' && declaredDev.has(pkg)) continue;
+    undeclared.add(pkg);
+    console.error(`  [UNDECLARED] "${pkg}" — imported in ${file.replace(ROOT + '/', '')}`);
   }
 }
 

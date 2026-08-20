@@ -82,13 +82,13 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
             resource_type: mimeType.startsWith('video/') ? 'video' : 'image',
             overwrite: true,
           },
-          (error: any, result: any) => {
+          (error: any, _result: any) => {
             if (error) {
               reject(error);
             } else {
               resolve({
-                url: result.secure_url,
-                key: result.public_id,
+                url: _result.secure_url,
+                key: _result.public_id,
               });
             }
           }
@@ -97,10 +97,7 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
         stream.end(buffer);
       });
     } catch (error) {
-      logger.error(
-        { err: error, key },
-        'Upload failed on Cloudinary'
-      );
+      logger.error({ err: error, key }, 'Upload failed on Cloudinary');
 
       throw new StorageError(
         `Failed to upload file to Cloudinary: ${
@@ -117,8 +114,8 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
     try {
       await this.initializeUploader();
 
-      return new Promise((resolve, reject) => {
-        this.uploader.destroy(key, (error: any, result: any) => {
+      return new Promise<void>((resolve, reject) => {
+        this.uploader.destroy(key, (error: any, _result: any) => {
           if (error) {
             reject(error);
           } else {
@@ -128,10 +125,7 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
         });
       });
     } catch (error) {
-      logger.warn(
-        { err: error, key },
-        'Failed to delete file from Cloudinary'
-      );
+      logger.warn({ err: error, key }, 'Failed to delete file from Cloudinary');
       // Don't throw on delete failure
     }
   }
@@ -148,10 +142,7 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
       // This is a basic implementation; Cloudinary's auth_token is more complex
       return `https://res.cloudinary.com/${this.config.cloudName}/image/upload/${key}?_a=${timestamp}`;
     } catch (error) {
-      logger.warn(
-        { err: error, key },
-        'Failed to generate signed URL from Cloudinary'
-      );
+      logger.warn({ err: error, key }, 'Failed to generate signed URL from Cloudinary');
 
       return `https://res.cloudinary.com/${this.config.cloudName}/image/upload/${key}`;
     }

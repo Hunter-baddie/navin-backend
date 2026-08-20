@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express';
 import { sendResponse } from '../../shared/http/sendResponse.js';
-import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import {
   createTemplateService,
   listTemplatesService,

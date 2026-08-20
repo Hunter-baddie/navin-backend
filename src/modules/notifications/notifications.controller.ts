@@ -45,10 +45,7 @@ export const markAllNotificationsReadController = async (
   sendResponse(res, 200, true, `${count} notifications marked as read`, { count });
 };
 
-export const deleteNotificationController = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const deleteNotificationController = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const userId = req.user?.userId ?? '';
 

@@ -15,11 +15,7 @@ export interface StorageAdapter {
    * @returns Promise resolving to object URL and storage key
    * @throws StorageError on network, permissions, or quota issues
    */
-  uploadFile(
-    buffer: Buffer,
-    mimeType: string,
-    key: string
-  ): Promise<StorageUploadResult>;
+  uploadFile(buffer: Buffer, mimeType: string, key: string): Promise<StorageUploadResult>;
 
   /**
    * Optional: delete object from storage.

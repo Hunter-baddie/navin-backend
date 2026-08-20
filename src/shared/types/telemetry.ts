@@ -34,12 +34,12 @@ export interface ITelemetry {
   anchorStatus: TelemetryAnchorStatus;
   anchorError?: string;
   rawPayload: Record<string, unknown>;
-  
+
   // New fields for frontend anomaly alignment
   shockMagnitude?: number; // Acceleration magnitude (G-force units)
   isAnomaly?: boolean; // True if any anomaly detected on this record
   anomalyType?: TelemetryAnomalyType; // Primary anomaly type (if isAnomaly=true)
-  
+
   createdAt: Date;
   updatedAt: Date;
 }

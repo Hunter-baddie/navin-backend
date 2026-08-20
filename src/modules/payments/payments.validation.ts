@@ -95,11 +95,6 @@ export const DisputeSettlementBodySchema = z.object({
   notes: z.string().optional(),
 });
 
-export const DisputeSettlementBodySchema = z.object({
-  reason: z.string().min(1, 'Reason is required'),
-  notes: z.string().optional(),
-});
-
 export type CreatePaymentInput = z.infer<typeof CreatePaymentBodySchema>;
 export type UpdatePaymentStatusInput = z.infer<typeof UpdatePaymentStatusBodySchema>;
 export type GetPaymentsQuery = z.infer<typeof GetPaymentsQuerySchema>;

@@ -4,10 +4,7 @@ import { validateRequest } from '../../shared/validation/validate.js';
 import { requireAuth } from '../../shared/middleware/requireAuth.js';
 import { requireRole } from '../../shared/middleware/requireRole.js';
 import { UserRole } from '../../shared/constants/roles.js';
-import {
-  CreateApiKeyBodySchema,
-  ApiKeyIdParamSchema,
-} from './apiKey.validation.js';
+import { CreateApiKeyBodySchema, ApiKeyIdParamSchema } from './apiKey.validation.js';
 import {
   createApiKeyController,
   listApiKeysController,
@@ -65,4 +62,3 @@ apiKeysRouter.delete(
 );
 
 export default apiKeysRouter;
-

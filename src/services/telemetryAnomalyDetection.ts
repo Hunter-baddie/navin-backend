@@ -114,10 +114,7 @@ export async function detectTelemetryAnomalies(
       details,
     };
   } catch (error) {
-    logger.error(
-      { err: error, telemetryId, shipmentId },
-      'Error detecting telemetry anomalies'
-    );
+    logger.error({ err: error, telemetryId, shipmentId }, 'Error detecting telemetry anomalies');
 
     return {
       isAnomaly: false,

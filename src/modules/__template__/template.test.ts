@@ -27,10 +27,7 @@ describe('Templates API', () => {
 
   describe('POST /api/templates', () => {
     it('returns 401 without auth', async () => {
-      await request(app)
-        .post('/api/templates')
-        .send({ name: 'New Template' })
-        .expect(401);
+      await request(app).post('/api/templates').send({ name: 'New Template' }).expect(401);
     });
 
     it('returns 403 with insufficient role', async () => {

@@ -14,7 +14,10 @@ export const VerifyOtpBodySchema = z.object({
     .min(10)
     .max(15)
     .regex(/^\+?[1-9]\d{9,14}$/, 'Invalid phone number format'),
-  otp: z.string().length(6, 'OTP must be 6 digits').regex(/^\d{6}$/, 'OTP must be numeric'),
+  otp: z
+    .string()
+    .length(6, 'OTP must be 6 digits')
+    .regex(/^\d{6}$/, 'OTP must be numeric'),
 });
 
 export type SendOtpInput = z.infer<typeof SendOtpBodySchema>;

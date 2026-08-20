@@ -39,11 +39,7 @@ export async function getNotificationsService(
   const skip = offsetSkip(page, limit);
 
   const [data, total] = await Promise.all([
-    NotificationModel.find(filter)
-      .sort({ timestamp: -1, _id: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
+    NotificationModel.find(filter).sort({ timestamp: -1, _id: -1 }).skip(skip).limit(limit).lean(),
     NotificationModel.countDocuments(filter),
   ]);
 

@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE, UserRole } from '../../shared/constants/index.js';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MIN_LENGTH_MESSAGE,
+  UserRole,
+} from '../../shared/constants/index.js';
 
 /**
  * Body schema for `POST /api/company/invitations`.
@@ -7,10 +11,9 @@ import { PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE, UserRole } from '../.
  */
 export const CreateInvitationBodySchema = z.object({
   email: z.string().email('Invalid email address'),
-  role: z.nativeEnum(UserRole).refine(
-    (role) => role !== UserRole.SUPER_ADMIN,
-    'Cannot invite SUPER_ADMIN users'
-  ),
+  role: z
+    .nativeEnum(UserRole)
+    .refine(role => role !== UserRole.SUPER_ADMIN, 'Cannot invite SUPER_ADMIN users'),
   message: z.string().optional(),
 });
 
