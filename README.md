@@ -5,7 +5,9 @@
 **Navin** is a blockchain-powered logistics platform that improves supply chain visibility for enterprises through tokenized shipments, immutable milestone tracking, and automated settlements.
 By creating a zero-trust interface between logistics providers and their clients, Navin aims to ensure both parties access identical real-time data — removing information asymmetry and enabling seamless, dispute-free operations.
 
-The backend service powers the off-chain layer of the platform, handling API logic, data aggregation, and integration with Soroban smart contracts.
+The backend service powers the off-chain layer of the platform, handling API logic, data aggregation, real-time streaming, and Stellar blockchain anchoring.
+
+> **Chain integration status:** shipment/telemetry hashes are anchored on-chain today via Horizon transactions. Soroban smart-contract integration (hash-and-emit events, escrow) is being co-designed with the [navin-contracts](https://github.com/Navin-xmr/navin-contracts) repo — settlement flows are currently simulated placeholders. See `TODO.md` Part 3.
 
 ---
 
@@ -33,24 +35,28 @@ Get the Navin Backend running in **less than 5 minutes**:
 git clone https://github.com/Navin-xmr/navin-backend.git
 cd navin-backend
 
-# 2. Install dependencies
-npm install
+# 2. Install dependencies (reproducible clean install)
+npm ci
 
 # 3. Create environment file
 cp .env.example .env
+# A development JWT_SECRET is pre-filled in .env.example.
+# Edit MONGO_URI if your MongoDB is not on the default localhost:27017.
 
-# 4. Update .env with your MongoDB connection string
-# Edit .env and set: MONGO_URI=mongodb://...
+# 4. Start MongoDB and Redis (required — Redis powers queues, SSE and caches)
+docker run -d -p 27017:27017 --name navin_mongo mongo:6.0
+docker run -d -p 6379:6379 --name navin_redis redis:7-alpine
 
 # 5. Start the development server (with hot reload)
 npm run dev
 
 # Expected output:
-# Server running on http://localhost:3000
-# Connected to MongoDB
+# info: HTTP server listening port=3000
 ```
 
-The API is now available at `http://localhost:3000/api`
+The API is now available at `http://localhost:3000/api`.
+
+> Prefer containers? See `docker-compose.yml` (mongo + redis + app). Note the compose stack is under repair — track progress in `TODO.md` Part 2 before relying on it.
 
 ### Verify Installation
 
@@ -82,10 +88,10 @@ curl -X POST http://localhost:3000/api/auth/signup \
 # Response:
 # {
 #   "success": true,
-#   "message": "User registered successfully",
+#   "message": "Account created successfully",
 #   "data": {
 #     "user": {
-#       "_id": "507f1f77bcf86cd799439011",
+#       "id": "507f1f77bcf86cd799439011",
 #       "email": "user@example.com",
 #       "name": "John Doe",
 #       "role": "VIEWER"
@@ -118,7 +124,7 @@ curl -X GET http://localhost:3000/api/shipments \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
 # If token is missing or invalid, you'll receive:
-# { "success": false, "message": "Missing or invalid token", "code": "ERR_AUTH_INVALID" }
+# { "success": false, "message": "Missing or invalid token", "data": null, "error": { "code": "ERR_AUTH_INVALID" } }
 ```
 
 ### 4. Logout
@@ -132,17 +138,18 @@ curl -X POST http://localhost:3000/api/auth/logout \
 
 ### JWT Expiration
 
-Tokens expire after **24 hours** by default. When expired, the API returns:
+Access tokens expire after **7 days** by default. When expired, the API returns:
 
 ```json
 {
   "success": false,
-  "code": "ERR_AUTH_INVALID",
-  "message": "Token has expired"
+  "message": "Token has expired",
+  "data": null,
+  "error": { "code": "ERR_AUTH_INVALID" }
 }
 ```
 
-**Action**: Redirect user to login page and request a new token.
+**Action**: Redirect user to login page. A `POST /api/auth/refresh` endpoint exists for session continuation; see [docs/swagger.yaml](docs/swagger.yaml) for its contract.
 
 ### Role-Based Access Control (RBAC)
 
@@ -153,8 +160,11 @@ User roles determine which endpoints they can access:
 | `SUPER_ADMIN` | Full system access | Internal DevOps, system administration |
 | `ADMIN` | Organization administration | Company managers, billing access |
 | `MANAGER` | Shipment & analytics management | Logistics coordinators |
-| `VIEWER` | Read-only access | Drivers, customers (view shipments only) |
+| `VIEWER` | Read-only access | Auditors, read-only dashboards |
+| `DRIVER` | Field operator (invitable today) | Drivers — assignable via invitations; no role-guarded routes yet |
 | `CUSTOMER` | Minimal read access | External parties (tracking only) |
+
+> Signup always assigns `VIEWER`; elevated roles are granted via invitations (`POST /api/users/invitations`) — never self-declared.
 
 If your role lacks permissions, you'll receive:
 
@@ -198,7 +208,12 @@ Every successful API response follows this standard format:
   "success": false,
   "message": "Human-readable error description",
   "data": null,
-  "code": "ERR_VALIDATION_FAILED"
+  "error": {
+    "code": "ERR_VALIDATION_FAILED"
+  },
+  "details": [
+    { "path": "email", "message": "Invalid email address", "code": "invalid_string" }
+  ]
 }
 ```
 
@@ -207,8 +222,11 @@ Every successful API response follows this standard format:
 - `success` (boolean) — Whether the operation succeeded
 - `message` (string) — Human-readable description
 - `data` (object|array|null) — Response payload; `null` on errors
-- `code` (string) — Error code (only in error responses); see [Error Codes Registry](docs/ERROR_CODES.md)
+- `error.code` (object) — Machine-readable error code lives at `error.code` (error responses only); see [Error Codes Registry](docs/ERROR_CODES.md)
+- `details` (array, optional) — Field-level validation details
 - `meta` (object) — Pagination metadata (only for list endpoints)
+
+> **Rate limiting:** `429` responses additionally include a top-level `retryAfter` (seconds) and an RFC-8574 `Retry-After` header.
 
 ---
 
@@ -301,8 +319,8 @@ const api = axios.create({ baseURL: 'http://localhost:3000/api' });
 api.interceptors.response.use(
   response => response.data,
   error => {
-    const code = error.response?.data?.code;
-    
+    const code = error.response?.data?.error?.code;
+
     if (code === 'ERR_AUTH_INVALID') {
       // Handle expired session
       localStorage.removeItem('authToken');
@@ -349,8 +367,8 @@ socket.on('disconnect', () => {
 
 ```typescript
 // Listen for shipment status changes
-socket.on('shipment:updated', (shipment) => {
-  console.log('Shipment updated:', shipment);
+socket.on('shipment:status', (shipment) => {
+  console.log('Shipment status updated:', shipment);
 });
 
 // Listen for new anomalies
@@ -366,111 +384,115 @@ For the IoT → BullMQ → Stellar → anomaly detection flow, see [Telemetry In
 
 ## Available Endpoints
 
+Summary of the main surfaces — **the full, authoritative reference is [docs/swagger.yaml](docs/swagger.yaml)**.
+
 ### Health & Status
 | Method | Path | Auth | Description |
 |--------|------|------|---|
-| `GET` | `/api/health` | No | System health check (no auth required) |
+| `GET` | `/api/health` | No | System health check |
 
 ### Authentication
 | Method | Path | Auth | Description |
 |--------|------|------|---|
-| `POST` | `/api/auth/signup` | No | Register a new user |
+| `POST` | `/api/auth/signup` | No | Register a new user (assigned `VIEWER`) |
 | `POST` | `/api/auth/login` | No | Authenticate and get JWT token |
-| `POST` | `/api/auth/logout` | Yes | Revoke current JWT |
-| `POST` | `/api/auth/api-keys` | Yes | Create machine-to-machine API key |
-| `GET` | `/api/auth/api-keys/{organizationId}` | Yes | List API keys for organization |
-| `DELETE` | `/api/auth/api-keys/{apiKeyId}` | Yes | Revoke an API key |
+| `POST` | `/api/auth/refresh` | No | Refresh session token (old jti blocklisted) |
+| `POST` | `/api/auth/register/company` | No | Create company + first ADMIN atomically |
+| `POST` | `/api/auth/logout` | Yes | Revoke current session (blocklists jti) |
+| `GET` / `DELETE` | `/api/auth/sessions[/{jti}]` | Yes | List / revoke sessions |
+| `POST` / `DELETE` | `/api/auth/2fa/setup`, `/verify`, `/{...}` | Yes | TOTP 2FA lifecycle + backup codes |
+| `GET` / `POST` / `DELETE` | `/api/company/api-keys[/{id}]` | ADMIN+ | Machine-to-machine API keys |
 
-### Users & Team
+> The legacy `/api/auth/api-keys/*` routes still work but are deprecated aliases of the module above.
+
+### Users & Invitations
 | Method | Path | Auth | Role | Description |
 |--------|------|------|------|---|
-| `GET` | `/api/users` | Yes | ADMIN+ | List organization users |
-| `POST` | `/api/users` | Yes | ADMIN+ | Create a new user |
-| `DELETE` | `/api/users/{id}` | Yes | ADMIN+ | Delete a user (soft delete) |
+| `GET` | `/api/users/me` | Yes | Any | Current user profile |
+| `GET` | `/api/users` | Yes | MANAGER+ | List organization users (cursor or offset) |
+| `POST` / `DELETE` | `/api/users[/{id}]` | Yes | ADMIN+ | Create / soft-delete users |
 | `POST` | `/api/users/invitations` | Yes | ADMIN+ | Generate invitation link |
-| `GET` | `/api/users/invitations/verify` | No | — | Verify invitation token |
-| `POST` | `/api/users/invitations/accept` | No | — | Accept invitation & create account |
+| `GET` / `POST` | `/api/users/invitations/verify`, `/accept` | No | — | Verify token / accept invitation |
+| `GET` / `POST` / `PATCH` / `DELETE` | `/api/company/invitations[...]` | ADMIN+ | Manage persistent invitations (resend/revoke/info) |
+
+### Organizations
+| Method | Path | Auth | Role | Description |
+|--------|------|------|------|---|
+| `POST` / `GET` / `GET·PATCH·DELETE {id}` | `/api/organizations[/{id}]` | SUPER_ADMIN (+ADMIN read/update) | Organization CRUD |
 
 ### Shipments
 | Method | Path | Auth | Role | Description |
 |--------|------|------|------|---|
-| `GET` | `/api/shipments` | Yes | VIEWER+ | List shipments (paginated) |
-| `POST` | `/api/shipments` | Yes | MANAGER+ | Create a new shipment |
-| `GET` | `/api/shipments/{id}` | Yes | VIEWER+ | Get shipment details |
-| `PATCH` | `/api/shipments/{id}` | Yes | MANAGER+ | Update shipment metadata |
-| `PATCH` | `/api/shipments/{id}/status` | Yes | MANAGER+ | Update shipment status |
-| `POST` | `/api/shipments/{id}/proof` | Yes | MANAGER+ | Upload proof of delivery |
-| `DELETE` | `/api/shipments/{id}` | Yes | ADMIN+ | Delete shipment (soft delete) |
+| `GET` | `/api/shipments` | Yes | VIEWER+ | List shipments (offset pagination) |
+| `POST` | `/api/shipments` | Yes | MANAGER+ | Create shipment (Stellar-tokenized) |
+| `GET·PATCH·DELETE` | `/api/shipments/{id}` | Yes | role varies | Details / update / soft-delete |
+| `PATCH` | `/api/shipments/{id}/status` | Yes | MANAGER+ | Status transition (state machine) |
+| `POST` | `/api/shipments/{id}/proof` | Yes | MANAGER+ | Upload proof of delivery (multipart) |
+| `POST` | `/api/shipments/{id}/documents`, `/{id}/photos` | Yes | MANAGER+ | Attach files (multipart) |
+| `GET` | `/api/shipments/{id}/timeline`, `/{id}/eta` | Yes | VIEWER+ | Milestone timeline / ETA |
+| `POST` | `/api/shipments/{id}/disputes` | Yes | MANAGER+ | Raise a dispute |
+| `GET` | `/api/shipments/export?format=csv` | Yes | ADMIN/MANAGER | CSV export (≤10k rows) |
+| CRUD | `/api/shipment-templates[/{id}]` | Yes | VIEWER+ read / MANAGER+ write | Reusable shipment templates |
 
-### Telemetry & Monitoring
+### Ledger & Telemetry & Anomalies
 | Method | Path | Auth | Role | Description |
 |--------|------|------|------|---|
-| `GET` | `/api/telemetry` | Yes | VIEWER+ | Get telemetry records (time-series) |
-| `GET` | `/api/anomalies` | Yes | VIEWER+ | List anomalies (cursor-paginated) |
-| `PATCH` | `/api/anomalies/{id}/resolve` | Yes | MANAGER+ | Mark anomaly as resolved |
-| `GET` | `/api/analytics/performance` | Yes | VIEWER+ | Get shipment performance analytics |
+| `GET` | `/api/ledger/blocks`, `/blocks/{id}` | Yes | VIEWER+ | Immutable milestone ledger (envelope + meta) |
+| `GET` / `POST` | `/api/telemetry`, `/telemetry/bulk` | Yes | VIEWER+ | Time-series records / bulk ingest (hashed + anchored) |
+| `GET` / `PUT` | `/api/telemetry/thresholds` | Yes | VIEWER+ / ADMIN+ | Per-organization anomaly thresholds |
+| `GET` | `/api/anomalies`, `/anomalies/stats` | Yes | VIEWER+ | Anomalies (cursor-paginated) / aggregates |
+| `PATCH` | `/api/anomalies/{id}/resolve` | Yes | MANAGER+ | Resolve anomaly |
 
-### Payments & Settlements
+### Analytics, Payments & Settlements
 | Method | Path | Auth | Role | Description |
 |--------|------|------|------|---|
-| `GET` | `/api/payments` | Yes | VIEWER+ | List payment records (Stellar settlements) |
+| `GET` | `/api/analytics/performance`, `/summary` | Yes | MANAGER+ | KPIs / summary with sparklines |
+| `GET` | `/api/payments`, `/payments/{id}` | Yes | VIEWER+ | Payment records |
+| `POST` / `PATCH` | `/api/payments`, `/payments/{id}/status` | Yes | ADMIN+ | Create / update payments |
+| `GET` | `/api/settlements`, `/settlements/summary`, `/{id}` | Yes | VIEWER+ | Settlement views |
+| `POST` | `/api/settlements/{id}/dispute` | Yes | MANAGER+ | Dispute a settlement |
 
-### Webhooks
+### Notifications & Activity
 | Method | Path | Auth | Description |
 |--------|------|------|---|
-| `POST` | `/api/webhooks/iot` | API Key | Receive IoT telemetry data |
-| `POST` | `/api/webhooks/stellar` | Signature | Receive Stellar settlement callbacks |
+| `GET` | `/api/notifications`, `/unread-count` | Yes | List notifications / unread badge |
+| `PATCH` / `POST` / `DELETE` | `/notifications/{id}/read`, `/read-all`, `/{id}` | Yes | Read-state management |
+| `GET` / `PATCH` | `/api/notifications/preferences` | Yes | Channel preferences |
+| `POST` | `/api/notifications/phone/send-otp`, `/verify-otp` | Yes | SMS OTP verification |
+| `GET` | `/api/activity` · `/api/audit-logs` | Yes | Activity feed (all roles) / audit trail (ADMIN+) |
+
+### Real-time & Webhooks
+| Method | Path | Auth | Description |
+|--------|------|------|---|
+| `GET` | `/api/events` (`?token=`) | SSE auth | Server-Sent Events stream |
+| `GET` | `/api/events/poll` | Yes | Fallback polling stream |
+| `POST` | `/api/webhooks/iot` | API Key | Receive IoT telemetry |
+| `POST` | `/api/webhooks/stellar` | HMAC Signature | Stellar settlement callbacks |
 
 ---
 
 ## Environment Variables
 
-All required and optional environment variables for development and production:
+Configuration is validated at boot with Zod (`src/env.ts`) — the process **exits immediately** if a required variable is missing or malformed.
+
+**Core variables:**
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `MONGO_URI` | ✅ Yes | — | MongoDB connection string (e.g., `mongodb://localhost:27017/navin`) |
-| `PORT` | ❌ No | `3000` | Port on which the API server listens |
-| `NODE_ENV` | ❌ No | `development` | Environment mode (`development`, `production`, `test`) |
-| `JWT_SECRET` | ❌ No | Generated | Secret key for signing JWTs (must be strong in production) |
-| `JWT_EXPIRY` | ❌ No | `24h` | JWT expiration time (e.g., `24h`, `7d`) |
-| `REDIS_URL` | ❌ No | `redis://localhost:6379` | Redis connection string (for sessions, rate limiting) |
-| `STELLAR_HORIZON_URL` | ❌ No | `https://horizon-testnet.stellar.org` | Stellar Horizon API endpoint |
-| `STELLAR_NETWORK_PASSPHRASE` | ❌ No | `Test SDF Network ; September 2015` | Stellar network identifier |
-| `LOG_LEVEL` | ❌ No | `info` | Logging level (`debug`, `info`, `warn`, `error`) |
-| `CORS_ORIGINS` | ❌ No | `http://localhost:3000,http://localhost:5173` | Comma-separated list of allowed origins |
-| `API_KEY_PREFIX` | ❌ No | `sk_` | Prefix for generated API keys |
+| `MONGO_URI` | ✅ Yes | — | MongoDB connection string (`mongodb://…`) |
+| `JWT_SECRET` | ✅ Yes | — | JWT signing secret (**min 32 characters**) |
+| `PORT` | No | `3000` | HTTP listen port |
+| `NODE_ENV` | No | `development` | `development` \| `test` \| `production` |
+| `REDIS_URL` | No | `redis://127.0.0.1:6379` | Redis (BullMQ queues, SSE, caches) |
+| `STELLAR_NETWORK` | No | `testnet` | `testnet` \| `public` |
+| `STELLAR_SECRET_KEY` | Optional | — | Horizon signing key (required for anchoring jobs) |
+| `STELLAR_WEBHOOK_SECRET` | Optional | — | HMAC secret for `/api/webhooks/stellar` (min 16 chars) |
+| `FRONTEND_URL` | No | `http://localhost:3000` | Invite / password-reset link base |
+| `ALLOWED_ORIGINS` | No | *(empty)* | Comma-separated CORS allowlist |
+| `TOTP_ENCRYPTION_KEY` | Optional* | — | 64-hex AES-256 key for 2FA secrets (*required in production*) |
+| `STORAGE_PROVIDER` | No | `mock` | `mock` \| `s3` \| `r2` \| `cloudinary` |
 
-### Example .env File
-
-```bash
-# Database
-MONGO_URI=mongodb://user:password@mongodb.example.com:27017/navin
-
-# Server
-PORT=3000
-NODE_ENV=production
-
-# Authentication
-JWT_SECRET=your-super-secret-key-change-this-in-production
-JWT_EXPIRY=24h
-
-# Redis (for sessions & caching)
-REDIS_URL=redis://:password@redis.example.com:6379
-
-# Stellar Blockchain
-STELLAR_HORIZON_URL=https://horizon.stellar.org
-STELLAR_NETWORK_PASSPHRASE=Public Global Stellar Network ; September 2015
-
-# Logging
-LOG_LEVEL=info
-
-# CORS
-CORS_ORIGINS=https://app.navin.io,https://staging.navin.io
-
-# API Keys
-API_KEY_PREFIX=sk_
-```
+The full matrix — SMTP, SendGrid, Twilio, S3/Cloudinary keys, Soroban placeholders, Sentry — lives in [`docs/environment-variables.md`](docs/environment-variables.md) and [`.env.example`](.env.example). There are **no** `JWT_EXPIRY`, `STELLAR_HORIZON_URL`, `STELLAR_NETWORK_PASSPHRASE`, or `API_KEY_PREFIX` variables; token TTL is fixed in code and the Horizon URL/network passphrase derive from `STELLAR_NETWORK`.
 
 ---
 
@@ -483,12 +505,15 @@ API_KEY_PREFIX=sk_
 | `npm run start` | Run production build |
 | `npm run typecheck` | Run TypeScript type checker |
 | `npm run check:deps` | Check runtime imports against `package.json` dependencies |
-| `npm run lint` | Run ESLint and Prettier checks |
-| `npm run lint:fix` | Fix linting and formatting issues |
-| `npm test` | Run test suite (Jest) |
-| `npm test -- --watch` | Run tests in watch mode |
-| `npm run migrations:up` | Run pending database migrations |
-| `npm run migrations:down` | Rollback last migration |
+| `npm run lint` | Run ESLint over `src/` |
+| `npm run lint:fix` | Auto-fix lint issues |
+| `npm test` | Run test suite (Jest with ESM VM modules) |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run migrate:up` | Apply pending database migrations (migrate-mongo) |
+| `npm run migrate:down` | Rollback last migration |
+| `npm run seed` | Seed the database with development data |
+| `npm run worker:stellar` | Standalone telemetry → Stellar anchoring worker |
+| `npm run worker:stellar-indexer` | Standalone Stellar confirmation indexer worker |
 
 ## Contributing
 
@@ -504,4 +529,4 @@ If you discover a security vulnerability, email [navinxmr@gmail.com](mailto:navi
 
 ---
 
-**Built with leveraging the Stellar ecosystem technology**
+**Built on the Stellar ecosystem.**
