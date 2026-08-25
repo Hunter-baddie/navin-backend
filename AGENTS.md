@@ -5,6 +5,14 @@ This is a logistics/supply-chain API: shipments, org roles, telemetry, and Stell
 
 Stack: TypeScript Strict · Express · MongoDB/Mongoose · Zod · JWT+Redis · Jest+Supertest.
 
+### Program state — read before working
+
+- **`TODO.md` is the canonical work tracker** (Parts 1–4). Check it before inventing tasks; several known-failing tests are tracked there with owners/plans.
+- **Tests deliberately do NOT gate CI yet** (TODO H4 decision): `ci.yml` enforces deps-audit/typecheck/build/lint/docker; the test suite has a known red baseline being remediated. Your duty: do not *increase* failures (see §4).
+- **Auth policy (decided 2026-08-25):** signup always assigns `VIEWER` — never implement email-domain-based role elevation (#147 resolved Option A). Elevation is invitations-only.
+- **Chain direction:** Stellar integration moves behind a `ChainAdapter` port (simulated vs Soroban); current `stellar.service.ts` manage-data ops are placeholders, escrow moves no funds. See TODO Part 3 before touching chain code.
+- **Realtime event names** come from `src/shared/types/socketEvents.ts` constants — never string literals (`telemetry_update`/`payment_status_changed` are dead names; live: `location:update`, `shipment:status`, `anomaly:detected`, `settlement:status`).
+
 ## 2. Architecture
 Request flow:
 
@@ -30,10 +38,22 @@ Request flow:
 
 **Database** — Soft-delete with `deletedAt`. Models use `isoDatePlugin` and soft-delete pre-hooks. Zod owns request shape; Mongoose owns data integrity.
 
-## 4. Testing & Documentation
-Cover every endpoint for **200**, **401**, **403**, and **400/422**. Mock externals (Stellar, storage, IoT). Run `npm test` before you call it done.
+**Testing (ESM)** — Register mocks in this order: `jest.resetModules()` → `jest.unstable_mockModule(...)` → dynamic `await import()`. Build mock factories from `tests/helpers/mocks.ts`; test data from `tests/fixtures/factories.ts` (real ObjectIds — `'ship-1'` style ids bypass guards and make tests vacuous). Never hand-roll module factories that omit exports the source imports.
 
-Keep `docs/swagger.yaml` in sync with every endpoint change.
+**Realtime** — Emit and assert socket/SSE events using the exported name constants from `src/shared/types/socketEvents.ts`, never string literals.
+
+## 4. Testing & Documentation
+Cover every endpoint for **200**, **401**, **403**, and **400/422**. Mock externals via `tests/helpers/mocks.ts` (Stellar, storage, sockets, queues). Keep `docs/swagger.yaml` in sync with every endpoint change.
+
+Test battery before done:
+
+```bash
+npm run lint && npm run typecheck && npm run build   # must be fully green
+npm test -- <suites for files you touched>           # must be green
+npm test                                             # full suite — see note
+```
+
+> The full suite currently has a **known red baseline** (tracked in `TODO.md` Part 1). Do not fix unrelated failing suites inside an unrelated PR — but your PR must not add new failures. If a suite you touched fails for a pre-existing reason, cite the TODO item instead of scope-creeping.
 
 ## 5. Agent Skills Pipeline
 After writing code, run these in order and fix issues before moving on:
@@ -69,6 +89,7 @@ Modules stay self-contained. Cross-module imports only along these lines:
 | `analytics` | `shipments`, `payments` |
 | `events` | `infra/redis` |
 | `notifications` | `users` (preferences) |
+| `telemetry`/`payments`/`shipments`/`webhooks` | `src/services/chain` (**port types only** — planned per TODO Part 3; never import Stellar implementations directly) |
 
 Prefer domain events over direct service calls. Never import a sibling controller. Avoid circular deps — pull shared logic into `src/shared/` or emit events. When you add a new dependency, note it here and in the consumer module's `AGENTS.md`.
 
@@ -78,7 +99,7 @@ Prefer domain events over direct service calls. Never import a sibling controlle
 - [ ] `requireAuth` on all routes (or `// PUBLIC: <reason>`)
 - [ ] No `...rest` into DB queries · no duplicate imports/declarations
 - [ ] Zod schemas export inferred types · models use `isoDatePlugin` + soft-delete
-- [ ] Swagger updated · `npm run build` passes · `npm test` passes
+- [ ] Swagger updated · `npm run build` passes · touched-module tests pass (see §4 baseline note)
 - [ ] **AGENTS.md reviewed if conventions, boundaries, or module structure changed**
 
 ### Clean-Install Build Triage (hard rule)
@@ -88,8 +109,9 @@ Build triage must be based strictly on `package.json`, `package-lock.json`, and 
 - **Never** assume a package is available because it exists locally — CI runs `npm ci` from scratch.
 - If a new runtime import is added, it **must** go in `dependencies` (not `devDependencies`).
 - Run `npm run check:deps` before committing to catch undeclared imports.
+- Dev-only imports under `src/` (seed scripts, test infra) need an allowlist entry in `scripts/check-undeclared-deps.js` — follow the documented `mongodb-memory-server`/`@faker-js/faker` precedent.
 - To reproduce CI locally: `rm -rf node_modules && npm ci && npm run build`
-- CI pins Node.js 20 via `.github/workflows/typecheck.yml` and always uses `npm ci`.
+- CI pins Node.js 20 via `.github/workflows/ci.yml` and always uses `npm ci`.
 
 ## 9. Token Efficiency
 Read before you write. Batch parallel reads. Cite `file:line`. Prefer small diffs. Skip filler prose.

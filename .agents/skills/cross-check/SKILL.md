@@ -112,6 +112,14 @@ For every service or controller function changed:
    - **404** (missing resource)
 3. If any test case is missing, create it. If an existing test contradicts the new behavior, update the test (never delete tests without explicit instruction).
 
+### Test hygiene rules
+
+1. **Mock factories come from helpers** — `tests/helpers/mocks.ts` for module mocks (spread `jest.requireActual` so new exports degrade gracefully), `tests/fixtures/factories.ts` for data. Never hand-roll a factory that omits exports the source imports — that is the #1 suite-killing failure mode.
+2. **ESM ordering is law** — `jest.resetModules()` → `jest.unstable_mockModule(...)` → dynamic `await import()`. Registering mocks after reset silently discards them.
+3. **Realtime assertions use constants** — import event names from `src/shared/types/socketEvents.ts`; string literals like `'telemetry_update'` are stale names that guarantee timeouts.
+4. **Positive assertions assert exact statuses** — `.not.toBe(403)` or `[200,404]` hedges let regressions slip; assert the intended status.
+5. **Use real ObjectIds** — string ids like `'ship-1'` trip `ObjectId.isValid()` guards and make tests vacuously exercise defaults instead of the code under test.
+
 ---
 
 ## Output

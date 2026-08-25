@@ -93,19 +93,9 @@ Add JSDoc comments to:
 
 When adding a new `AppError` code:
 
-1. Add the code to `src/shared/http/errors.ts` in the `ErrorCodes` object.
+1. Add the code to `src/shared/http/errors.ts` in the `ErrorCodes` object — that file is the **single source of truth**; never maintain a parallel list here.
 2. Follow the naming convention: `ERR_<DOMAIN>_<DESCRIPTION>` (e.g., `ERR_SHIPMENT_ALREADY_DELIVERED`).
-3. Document the code's meaning in the table below (maintain this in the swagger spec or a dedicated `docs/error-codes.md`):
-
-| Code | HTTP Status | Meaning |
-|------|-------------|---------|
-| `ERR_AUTH_INVALID` | 401 | Missing, expired, or revoked JWT |
-| `ERR_PERMISSION_DENIED` | 403 | User role insufficient for this action |
-| `ERR_NOT_FOUND` | 404 | Requested resource does not exist |
-| `ERR_BAD_REQUEST` | 400 | Malformed request structure |
-| `ERR_VALIDATION_FAILED` | 400 | Zod validation failure with details |
-| `ERR_DUPLICATE_KEY` | 409 | MongoDB unique constraint violation |
-| `ERR_INTERNAL_SERVER_ERROR` | 500 | Unexpected server error |
+3. Ensure the code is documented in `docs/ERROR_CODES.md` (full registry rewrite tracked as TODO P3-10; until then, add your new code to it manually so the doc doesn't drift further).
 
 ---
 
@@ -139,7 +129,7 @@ For every PR-worthy change, append an entry to `CHANGELOG.md` (create if it does
 ## Step 5 — README Maintenance
 
 If a change affects:
-- **Environment variables** → Update the `.env.example` table in README.
+- **Environment variables** → Update `.env.example`, `src/env.ts` (Zod schema), and `docs/environment-variables.md` — all three must stay in sync; README only links to them.
 - **New module** → Add the module to the Architecture section.
 - **New dependency** → Document why it was added and its version.
 - **Breaking API change** → Add a migration note.

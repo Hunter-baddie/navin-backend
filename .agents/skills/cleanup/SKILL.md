@@ -76,10 +76,12 @@ Run these commands and confirm zero errors:
 ```bash
 npm run lint
 npm run build
-npm test
+npm test -- <suites covering your touched files>
 ```
 
-If any command fails, fix the issue before proceeding. Do NOT skip failing tests.
+If any command fails, fix the issue before proceeding.
+
+> **Red-baseline rule (TODO.md Part 1):** the full suite has known pre-existing failures tracked there. Run the full `npm test` once for awareness, but only *your touched suites* must pass. Never fix unrelated failing suites inside an unrelated PR — cite the TODO item instead. Your PR must not increase the baseline failure count.
 
 ---
 
