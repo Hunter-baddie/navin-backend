@@ -19,6 +19,8 @@ import {
   ShipmentStatus,
   MilestoneEvent,
   type ShipmentDocumentType,
+  type IDispute,
+  type DisputeType,
 } from '../../shared/types/shipment.js';
 import { auditLog } from '../../shared/utils/auditLog.js';
 import { logger } from '../../shared/logger/logger.js';
@@ -798,17 +800,17 @@ export const createDisputeService = async (
 
   const referenceNumber = `DSP-${Math.floor(100000 + Math.random() * 900000)}`;
 
-  const dispute = {
+  const dispute: IDispute = {
     referenceNumber,
     status: 'PENDING',
-    type: data.type,
+    type: data.type as DisputeType,
     description: data.description,
     evidenceUrl,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
-  shipment.disputes.push(dispute as any);
+  shipment.disputes.push(dispute);
   await shipment.save();
 
   if (data.actorUserId) {
