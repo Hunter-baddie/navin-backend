@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import * as ledgerService from './ledger.service.js';
-import type { GetLedgerBlocksQuery } from './ledger.validation.js';
+import type { GetLedgerBlocksQuery, LedgerBlockIdParam } from './ledger.validation.js';
 
 /**
  * Lists ledger blocks with optional filters and cursor pagination.
@@ -45,6 +45,7 @@ export const getLedgerBlocks = async (req: Request, res: Response) => {
  * @throws {AppError} 400 VALIDATION_ERROR — when the id param is invalid.
  */
 export const getLedgerBlockById = async (req: Request, res: Response) => {
-  const block = await ledgerService.getLedgerBlockByIdService(req.params.id);
+  const params = req.params as unknown as LedgerBlockIdParam;
+  const block = await ledgerService.getLedgerBlockByIdService(params.id);
   return res.status(200).json({ data: block });
 };
