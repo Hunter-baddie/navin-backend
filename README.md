@@ -1,6 +1,6 @@
 # Navin Backend
 
-[![Type Check](https://github.com/Navin-xmr/navin-backend/actions/workflows/typecheck.yml/badge.svg)](https://github.com/Navin-xmr/navin-backend/actions/workflows/typecheck.yml)
+[![CI](https://github.com/Navin-xmr/navin-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/Navin-xmr/navin-backend/actions/workflows/ci.yml)
 
 **Navin** is a blockchain-powered logistics platform that improves supply chain visibility for enterprises through tokenized shipments, immutable milestone tracking, and automated settlements.
 By creating a zero-trust interface between logistics providers and their clients, Navin aims to ensure both parties access identical real-time data — removing information asymmetry and enabling seamless, dispute-free operations.
