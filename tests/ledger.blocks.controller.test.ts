@@ -15,7 +15,7 @@ describe('GET /api/ledger/blocks controller', () => {
     getLedgerBlocksServiceMock.mockReset();
   });
 
-  it('returns 200 with raw shape {data,nextCursor,hasMore,total}', async () => {
+  it('returns 200 with envelope {success,message,data,meta}', async () => {
     getLedgerBlocksServiceMock.mockResolvedValue({
       data: [
         {
@@ -45,10 +45,14 @@ describe('GET /api/ledger/blocks controller', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: 'Ledger blocks retrieved',
       data: expect.any(Array),
-      nextCursor: 'lb1',
-      hasMore: true,
-      total: 2,
+      meta: {
+        total: 2,
+        hasMore: true,
+        nextCursor: 'lb1',
+      },
     });
   });
 
@@ -94,10 +98,14 @@ describe('GET /api/ledger/blocks controller', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: 'Ledger blocks retrieved',
       data: [],
-      nextCursor: null,
-      hasMore: false,
-      total: 0,
+      meta: {
+        total: 0,
+        hasMore: false,
+        nextCursor: null,
+      },
     });
   });
 });

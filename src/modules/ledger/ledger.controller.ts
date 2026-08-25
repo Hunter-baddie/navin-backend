@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as ledgerService from './ledger.service.js';
 import type { GetLedgerBlocksQuery } from './ledger.validation.js';
+import { sendResponse } from '../../shared/http/sendResponse.js';
 
 /**
  * Lists ledger blocks with optional filters and cursor pagination.
@@ -25,12 +26,13 @@ export const getLedgerBlocks = async (req: Request, res: Response) => {
     cursor,
   });
 
-  return res.status(200).json({
-    data: result.data,
-    nextCursor: result.nextCursor,
-    hasMore: result.hasMore,
+  const meta = {
     total: result.total,
-  });
+    hasMore: result.hasMore,
+    nextCursor: result.nextCursor,
+  };
+
+  return sendResponse(res, 200, true, 'Ledger blocks retrieved', result.data, meta);
 };
 
 /**
@@ -46,5 +48,5 @@ export const getLedgerBlocks = async (req: Request, res: Response) => {
  */
 export const getLedgerBlockById = async (req: Request, res: Response) => {
   const block = await ledgerService.getLedgerBlockByIdService(req.params.id);
-  return res.status(200).json({ data: block });
+  return sendResponse(res, 200, true, 'Ledger block retrieved', block);
 };
