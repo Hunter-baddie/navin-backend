@@ -2,17 +2,36 @@ import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import { AppError } from '../src/shared/http/errors.js';
 
 const getLedgerBlocksServiceMock = jest.fn();
+const getLedgerBlockByIdServiceMock = jest.fn();
 
 await jest.unstable_mockModule('../src/modules/ledger/ledger.service.js', () => ({
   getLedgerBlocksService: getLedgerBlocksServiceMock,
-  getLedgerBlockByIdService: jest.fn(),
+  getLedgerBlockByIdService: getLedgerBlockByIdServiceMock,
 }));
 
-const { getLedgerBlocks } = await import('../src/modules/ledger/ledger.controller.js');
+const { getLedgerBlocks, getLedgerBlockById } = await import(
+  '../src/modules/ledger/ledger.controller.js',
+);
 
 describe('GET /api/ledger/blocks controller', () => {
   beforeEach(() => {
     getLedgerBlocksServiceMock.mockReset();
+    getLedgerBlockByIdServiceMock.mockReset();
+  });
+
+  it('passes the validated ledger block id parameter to the service', async () => {
+    getLedgerBlockByIdServiceMock.mockResolvedValue({ _id: 'lb1' });
+
+    const req = { params: { id: 'lb1' } } as any;
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    } as any;
+
+    await getLedgerBlockById(req, res);
+
+    expect(getLedgerBlockByIdServiceMock).toHaveBeenCalledWith('lb1');
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 
   it('returns 200 with raw shape {data,nextCursor,hasMore,total}', async () => {
