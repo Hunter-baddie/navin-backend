@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added integration contract tests for implemented routes, authentication, role guards, and response envelopes (#385)
+- Added test-runner documentation for the backend integration contract suite (#385)
 - Renamed Socket.IO event `telemetry_update` → `location:update` to match frontend contract
 - Renamed Socket.IO event `anomaly_detected` → `anomaly:detected` to match frontend contract
 - Renamed Socket.IO event `status_update` → `shipment:status` to match frontend contract
