@@ -19,7 +19,7 @@
     "migrate:up": "migrate-mongo up --config migrate-mongo.config.cjs",
     "migrate:down": "migrate-mongo down --config migrate-mongo.config.cjs",
     "migrate:status": "migrate-mongo status --config migrate-mongo.config.cjs",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1114.0",

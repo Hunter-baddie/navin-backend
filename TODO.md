@@ -116,6 +116,8 @@ Tests use `jest.unstable_mockModule()`; merged source now imports symbols the mo
 
 ### H1. P0 — Blockers (crash-loop / security defaults)
 
+- [x] **H1.0. `npm ci --omit=dev` crash in Docker** — `"prepare": "husky"` ran on prod install where husky (devDep) is absent → exit 127. FIXED 2026-08-25: `prepare` → `husky || true` + `ENV HUSKY=0` in both Docker stages. Found by the new CI docker-build job on its first run
+
 - [ ] **H1.1. App crash-loops on startup** — `docker-compose.yml:30` sets `JWT_SECRET=dev-secret-key-replace-in-prod` (30 chars); src/env.ts:11 requires `min(32)` → `process.exit(1)` (src/env.ts:89) on every boot. Fix the secret length; consider `env_file:` so this can't recur
 - [ ] **H1.2. Container runs as root** — no `USER node` in runner stage (Dockerfile:16–33)
 - [ ] **H1.3. No `ENV NODE_ENV=production`** in the runner image — mode left to compose, which hardcodes `development` (docker-compose.yml:26) against a production-built artifact
@@ -139,8 +141,12 @@ Tests use `jest.unstable_mockModule()`; merged source now imports symbols the mo
 
 ### H4. CI/CD gaps
 
+> **DECISION (2026-08-25):** Tests are deliberately EXCLUDED from PR CI until the contribution-review alignment pass. Rationale: the suite is currently fragile (ESM VM modules, infra-dependent, 28 red suites) and would generate pure noise on every PR. Residual risk accepted: mock/test rot and behavioral regressions accumulate silently in the interim — typecheck/build/check:deps only catch source-level breakage. Mitigation options recorded below.
+
 - [ ] **H4.1. No Docker verification** — typecheck.yml is the only workflow; nothing builds the image or runs a compose smoke test
-- [ ] **H4.2. Missing quality gates in CI** — no `npm test`, no `npm run lint` jobs despite AGENTS.md pre-commit gates requiring them
+- [ ] **H4.2. Missing quality gates in CI** — lint job addable immediately (currently green); tests deferred per decision above. Rollout: (1) restructure into `ci.yml` with parallel jobs: deps-audit+typecheck+build, lint, docker-build (paths-filtered); (2) OPTIONAL heartbeat: `tests-nightly.yml` with `workflow_dispatch` + weekly `schedule:` — never on PRs — as a passive drift record for the future review pass; (3) after Part 1 remediation completes during the review pass, add `tests` as a REQUIRED gate per the closeout sequence (remove continue-on-error → branch protection → README/AGENTS caveats)
+- [ ] **H4.3. Dependabot config** — `.github/dependabot.yml` for npm + GitHub Actions ecosystems
+- [ ] **H4.4. Branch protection** — mark existing checks required once jobs exist; add `tests` to required set only after the review-pass alignment
 
 ---
 
