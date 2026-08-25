@@ -108,6 +108,8 @@ for (const file of files) {
     if (isTestFile(file) && declaredDev.has(pkg)) continue;
     // mongodb-memory-server is imported in src/infra/mongo/connection.ts for test/dev only
     if (pkg === 'mongodb-memory-server' && declaredDev.has(pkg)) continue;
+    // @faker-js/faker is imported in src/scripts/seed.ts (dev seeding tool only)
+    if (pkg === '@faker-js/faker' && declaredDev.has(pkg)) continue;
     undeclared.add(pkg);
     console.error(`  [UNDECLARED] "${pkg}" — imported in ${file.replace(ROOT + '/', '')}`);
   }
