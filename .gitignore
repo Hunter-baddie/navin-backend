@@ -20,6 +20,9 @@ logs/
 # agent / temporary search output
 grep_out.txt
 
+# local wave-issue pipeline (never commit; issues are created via gh CLI)
+/wave issues/
+
 # coverage
 coverage/
 

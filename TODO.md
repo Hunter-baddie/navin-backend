@@ -74,7 +74,7 @@ Tests use `jest.unstable_mockModule()`; merged source now imports symbols the mo
 
 ### D. Genuine spec/source conflicts (need product decision, not just edits)
 
-- [ ] **D1. #147 admin-domain signup roles** — tests expect ADMIN for admin-domain emails (:71–113); source deliberately assigns VIEWER always (auth.service.ts:50–52) as an anti-privilege-escalation measure. Reconcile: update tests to expect VIEWER, or reopen issue with product
+- [ ] **D1. #147 admin-domain signup roles — ✅ DECIDED 2026-08-25 (Option A): VIEWER-always policy stands as intentional security measure.** Tests to be aligned via wave issue P2-26 (update expectations + add escalation-guard regression test). No source changes required.
       Suite: `tests/issues-147-150-154-155.test.ts` (also split file — see G5)
 
 ### E. Structural / config
