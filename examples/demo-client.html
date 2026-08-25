@@ -242,15 +242,15 @@ Body:
                 document.getElementById('leaveBtn').disabled = true;
             });
 
-            socket.on('telemetry_update', (data) => {
+            socket.on('location:update', (data) => {
                 logEvent('telemetry', 'Telemetry Update', data);
             });
 
-            socket.on('status_update', (data) => {
+            socket.on('shipment:status', (data) => {
                 logEvent('status', 'Status Update', data);
             });
 
-            socket.on('anomaly_detected', (data) => {
+            socket.on('anomaly:detected', (data) => {
                 logEvent('anomaly', 'Anomaly Detected', data);
             });
         }

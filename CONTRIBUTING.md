@@ -25,7 +25,7 @@ By creating a zero-trust interface between logistics providers and their clients
 The backend service powers the off-chain layer of the platform, handling API logic, data aggregation, and integration with Soroban smart contracts.
 
 - **Blockchain**: Stellar (Soroban smart contracts)
-- **Language**: Rust
+- **Language**: TypeScript (Node.js 20, ESM) · Express · MongoDB/Mongoose
 - **Related Repos**:
   - Smart Contracts: [navin-contracts](https://github.com/Navin-xmr/navin-contracts)
 
@@ -35,8 +35,8 @@ The backend service powers the off-chain layer of the platform, handling API log
 
 ### Prerequisites
 
-- [Rust](https://www.rust-lang.org/tools/install) (latest stable)
-- Cargo (included with Rust)
+- [Node.js 20](https://nodejs.org/en/download) (LTS)
+- npm (included with Node.js)
 
 ### Fork & Clone
 
@@ -58,8 +58,8 @@ The backend service powers the off-chain layer of the platform, handling API log
 ### Verify Your Environment
 
 ```bash
-rustc --version
-cargo --version
+node --version   # expect v20.x
+npm --version
 ```
 
 ---
@@ -209,7 +209,13 @@ All PRs must pass the following CI checks before they can be merged:
 | Dependency audit | `npm run check:deps` | Scans `src/` imports against `package.json` `dependencies` |
 | Type check | `npm run typecheck` | Runs `tsc --noEmit` with strict mode — zero errors required |
 | Build | `npm run build` | Compiles TypeScript to `dist/` — must succeed cleanly |
-| Tests | `npm test` | Full test suite must pass |
+| Lint | `npm run lint` | ESLint over `src/` — zero errors |
+| Tests | `npm test` | Full test suite |
+
+> [!NOTE]
+> CI currently enforces dependency audit + typecheck + build. The lint and full-suite
+> gates are being stabilized — see `TODO.md` Part 1 before assuming a red suite is your fault.
+> Run `npm run lint && npm test` locally for changes touching `src/`.
 
 ### Clean-Install Build Triage
 
