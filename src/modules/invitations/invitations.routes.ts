@@ -74,6 +74,7 @@ invitationsRouter.delete(
  * GET /api/company/invitations/info
  * Get invitation info from token (public endpoint).
  */
+// PUBLIC: token lookup for invitation preview
 invitationsRouter.get(
   '/info',
   validateRequest({ query: InvitationInfoQuerySchema }),
@@ -84,6 +85,7 @@ invitationsRouter.get(
  * POST /api/company/invitations/accept
  * Accept invitation and create user account (public endpoint).
  */
+// PUBLIC: accepts invitation and creates user account
 invitationsRouter.post(
   '/accept',
   validateRequest({ body: AcceptInvitationBodySchema }),
