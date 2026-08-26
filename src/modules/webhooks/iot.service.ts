@@ -141,7 +141,7 @@ export async function processIotWebhook(body: IotWebhookBody) {
         const anomalyPayload: AnomalyAlertPayload = {
           anomalyId: telemetry._id.toString(),
           shipmentId: telemetry.shipmentId.toString(),
-          type: result.anomalyType as any,
+          type: result.anomalyType as AnomalyAlertPayload['type'],
           severity: 'HIGH',
           message: result.details.join('; '),
           timestamp: new Date().toISOString(),

@@ -60,11 +60,7 @@ export const InvitationInfoQuerySchema = z.object({
   token: z.string().min(1),
 });
 
-export type CreateInvitationInput = z.infer<typeof CreateInvitationBodySchema>;
-/** Alias for `CreateInvitationInput` — preferred for controllers that follow the `*Body` naming. */
-export type CreateInvitationBody = CreateInvitationInput;
+export type CreateInvitationBody = z.infer<typeof CreateInvitationBodySchema>;
 export type ListInvitationsQuery = z.infer<typeof ListInvitationsQuerySchema>;
-export type AcceptInvitationInput = z.infer<typeof AcceptInvitationBodySchema>;
-/** Alias for `AcceptInvitationInput` — preferred for controllers that follow the `*Body` naming. */
-export type AcceptInvitationBody = AcceptInvitationInput;
+export type AcceptInvitationBody = z.infer<typeof AcceptInvitationBodySchema>;
 export type InvitationInfoQuery = z.infer<typeof InvitationInfoQuerySchema>;

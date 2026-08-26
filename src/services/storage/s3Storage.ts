@@ -35,7 +35,7 @@ async function getS3Client(_config: {
 }
 
 export class S3StorageAdapter implements StorageAdapter {
-  private client: any;
+  private client: unknown = null;
   private bucket: string;
 
   constructor(
@@ -92,7 +92,12 @@ export class S3StorageAdapter implements StorageAdapter {
         ACL: 'public-read',
       });
 
-      await this.client.send(command);
+      const client = this.client as { send: (command: unknown) => Promise<unknown> } | null;
+      if (!client) {
+        throw new StorageError('S3 client is not initialized', this.config.provider, 500);
+      }
+
+      await client.send(command);
 
       // Build public URL based on provider
       const url = this.buildPublicUrl(key);
@@ -130,7 +135,12 @@ export class S3StorageAdapter implements StorageAdapter {
         Key: key,
       });
 
-      await this.client.send(command);
+      const client = this.client as { send: (command: unknown) => Promise<unknown> } | null;
+      if (!client) {
+        return;
+      }
+
+      await client.send(command);
       logger.debug(`File deleted from ${this.config.provider}: ${key}`);
     } catch (error) {
       logger.warn({ err: error, key }, `Failed to delete file from ${this.config.provider}`);
@@ -150,7 +160,8 @@ export class S3StorageAdapter implements StorageAdapter {
         Key: key,
       });
 
-      const url = await awsGetSignedUrl(this.client, command, {
+      const client = this.client as Parameters<typeof awsGetSignedUrl>[0];
+      const url = await awsGetSignedUrl(client, command, {
         expiresIn: expiresInSeconds,
       });
 

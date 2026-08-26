@@ -1,6 +1,13 @@
 import type { RequestHandler } from 'express';
 import { sendResponse } from '../../shared/http/sendResponse.js';
 import * as invitationsService from './invitations.service.js';
+import type {
+  AcceptInvitationBody,
+  CreateInvitationBody,
+  InvitationIdParam,
+  InvitationInfoQuery,
+  ListInvitationsQuery,
+} from './invitations.validation.js';
 
 /**
  * Create and send an invitation to a team member.
@@ -14,10 +21,11 @@ import * as invitationsService from './invitations.service.js';
  * @throws {AppError} 403 if insufficient role
  */
 export const createInvitationController: RequestHandler = async (req, res) => {
+  const body = req.body as CreateInvitationBody;
   const result = await invitationsService.createAndSendInvitation({
-    email: req.body.email,
-    role: req.body.role,
-    message: req.body.message,
+    email: body.email,
+    role: body.role,
+    message: body.message,
     inviterId: req.user?.userId ?? '',
     inviterRole: req.user?.role ?? '',
     organizationId: req.user?.organizationId ?? '',
@@ -38,11 +46,12 @@ export const createInvitationController: RequestHandler = async (req, res) => {
  * @throws {AppError} 403 if insufficient role
  */
 export const listInvitationsController: RequestHandler = async (req, res) => {
+  const query = req.query as unknown as ListInvitationsQuery;
   const result = await invitationsService.listOrganizationInvitations({
     organizationId: req.user?.organizationId ?? '',
-    limit: req.query.limit as unknown as number,
-    cursor: req.query.cursor as string | undefined,
-    status: req.query.status as string | undefined,
+    limit: query.limit,
+    cursor: query.cursor,
+    status: query.status,
   });
 
   sendResponse(res, 200, true, 'Invitations retrieved successfully', result.data, {
@@ -63,10 +72,8 @@ export const listInvitationsController: RequestHandler = async (req, res) => {
  * @throws {AppError} 400 if invitation not in PENDING status
  */
 export const resendInvitationController: RequestHandler = async (req, res) => {
-  const result = await invitationsService.resendInvitation(
-    req.params.id,
-    req.user?.organizationId ?? ''
-  );
+  const { id } = req.params as unknown as InvitationIdParam;
+  const result = await invitationsService.resendInvitation(id, req.user?.organizationId ?? '');
 
   sendResponse(res, 200, true, 'Invitation resent successfully', result);
 };
@@ -81,10 +88,8 @@ export const resendInvitationController: RequestHandler = async (req, res) => {
  * @throws {AppError} 403 if forbidden
  */
 export const revokeInvitationController: RequestHandler = async (req, res) => {
-  const result = await invitationsService.revokeInvitationById(
-    req.params.id,
-    req.user?.organizationId ?? ''
-  );
+  const { id } = req.params as unknown as InvitationIdParam;
+  const result = await invitationsService.revokeInvitationById(id, req.user?.organizationId ?? '');
 
   sendResponse(res, 200, true, 'Invitation revoked successfully', result);
 };
@@ -100,7 +105,8 @@ export const revokeInvitationController: RequestHandler = async (req, res) => {
  * @throws {AppError} 400 if invitation already accepted/revoked/expired
  */
 export const getInvitationInfoController: RequestHandler = async (req, res) => {
-  const result = await invitationsService.getInvitationInfo(req.query.token as string);
+  const { token } = req.query as unknown as InvitationInfoQuery;
+  const result = await invitationsService.getInvitationInfo(token);
 
   sendResponse(res, 200, true, 'Invitation info retrieved successfully', result);
 };
@@ -119,10 +125,11 @@ export const getInvitationInfoController: RequestHandler = async (req, res) => {
  * @throws {AppError} 400 if invitation not in PENDING status
  */
 export const acceptInvitationController: RequestHandler = async (req, res) => {
+  const body = req.body as AcceptInvitationBody;
   const result = await invitationsService.acceptInvitationWithPassword({
-    token: req.body.token,
-    name: req.body.name,
-    password: req.body.password,
+    token: body.token,
+    name: body.name,
+    password: body.password,
   });
 
   sendResponse(res, 201, true, 'Invitation accepted successfully', result);

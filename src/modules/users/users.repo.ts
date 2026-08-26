@@ -26,7 +26,10 @@ export async function createUser(input: {
 }
 
 export async function findUserByEmail(email: string) {
-  return UserModel.findOne({ email }).lean();
+  const result = UserModel.findOne({ email });
+  return typeof (result as { lean?: () => unknown }).lean === 'function'
+    ? (result as { lean: () => Promise<unknown> }).lean()
+    : result;
 }
 
 export async function findUsersByOrganizationId(
@@ -96,5 +99,8 @@ export async function findUsersByOrganizationId(
 }
 
 export async function findUserById(id: string) {
-  return UserModel.findById(id).select('-passwordHash').lean();
+  const result = UserModel.findById(id).select('-passwordHash');
+  return typeof (result as { lean?: () => unknown }).lean === 'function'
+    ? (result as { lean: () => Promise<unknown> }).lean()
+    : result;
 }
