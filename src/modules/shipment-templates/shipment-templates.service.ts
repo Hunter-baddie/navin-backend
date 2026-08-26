@@ -1,7 +1,7 @@
 import { ShipmentTemplate } from './shipment-templates.model.js';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import type { IShipmentTemplate } from '../../shared/types/shipmentTemplate.js';
-import type { CreateTemplateInput, UpdateTemplateInput } from './shipment-templates.validation.js';
+import type { CreateTemplateBody, UpdateTemplateBody } from './shipment-templates.validation.js';
 
 /**
  * Creates a new shipment template scoped to an organization.
@@ -12,7 +12,7 @@ import type { CreateTemplateInput, UpdateTemplateInput } from './shipment-templa
  */
 export const createTemplateService = async (
   organizationId: string,
-  data: CreateTemplateInput
+  data: CreateTemplateBody
 ): Promise<IShipmentTemplate> => {
   const template = await ShipmentTemplate.create({
     name: data.name,
@@ -62,7 +62,7 @@ export const getTemplateByIdService = async (
 export const updateTemplateService = async (
   id: string,
   organizationId: string,
-  data: UpdateTemplateInput
+  data: UpdateTemplateBody
 ): Promise<IShipmentTemplate> => {
   const updateFields: Record<string, unknown> = {};
   if (data.name !== undefined) updateFields['name'] = data.name;
