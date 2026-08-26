@@ -185,6 +185,28 @@ PRs with unresolved or carelessly merged conflicts **will not be merged**.
 We want high quality code so our contributors can work on their issues not fix other's mistakes. 
 
 
+## Pre-commit Hooks
+
+This project uses [husky](https://typicode.github.io/husky/) + [lint-staged](https://github.com/lint-staged/lint-staged) to auto-format and lint staged files on commit. The hook runs automatically when you commit — no manual steps needed after `npm install`.
+
+If the hook doesn't fire, ensure `.husky/pre-commit` exists and is executable:
+
+```bash
+chmod +x .husky/pre-commit
+```
+
+## Branch Protection
+
+`main` requires the following status checks to pass before merge:
+
+- Deps audit · Typecheck · Build (`verify`)
+- Lint (`lint`)
+- Docker image build (`docker`) — when applicable
+
+Admin enforcement is enabled. PRs cannot be merged until all required checks are green.
+
+---
+
 ## Getting Help
 
 If you're stuck, have questions, or want to discuss ideas before starting:
