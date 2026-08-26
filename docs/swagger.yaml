@@ -3706,6 +3706,140 @@ paths:
            description: Forbidden - not SUPER_ADMIN
          '404':
            description: Organization not found
+  /api/shipments/export:
+    get:
+      summary: Export shipments as CSV or JSON
+      description: |
+        Downloads filtered shipments as a CSV or JSON attachment.
+        Requires JWT and ADMIN or MANAGER role. Result set capped at 10,000 records.
+      tags:
+        - Shipments
+      security:
+        - bearerAuth: []
+      x-required-role: [ADMIN, MANAGER]
+      parameters:
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum: [csv, json]
+            default: json
+          description: Output format
+        - in: query
+          name: status
+          schema:
+            type: string
+          description: Filter by shipment status
+        - in: query
+          name: origin
+          schema:
+            type: string
+          description: Filter by origin (partial match)
+        - in: query
+          name: destination
+          schema:
+            type: string
+          description: Filter by destination (partial match)
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date-time
+          description: Include shipments created at or after this timestamp
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date-time
+          description: Include shipments created at or before this timestamp
+      responses:
+        '200':
+          description: Shipments exported successfully
+          content:
+            text/csv:
+              schema:
+                type: string
+                description: CSV file attachment
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Shipment'
+        '400':
+          description: Validation error or export too large (>10,000 records)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden — insufficient role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/auth/password:
+    patch:
+      summary: Change authenticated user's password
+      description: |
+        Verifies `currentPassword` against the stored hash. If correct, hashes
+        `newPassword` and updates the user. The current JWT is blocklisted to
+        force re-login with the new credentials.
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                  description: The user's current plaintext password
+                newPassword:
+                  type: string
+                  minLength: 8
+                  description: New password (minimum 8 characters)
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Password changed successfully
+                  data:
+                    nullable: true
+                    example: null
+        '400':
+          description: Validation error (e.g. newPassword too short)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing/invalid token or incorrect currentPassword
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/shipments:
     get:
       summary: Get paginated shipments with offset-based pagination

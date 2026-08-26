@@ -8,6 +8,7 @@ import {
   refreshToken,
   registerCompany,
   setup2fa,
+  changePassword,
 } from './auth.service.js';
 import { sendResponse } from '../../shared/http/sendResponse.js';
 
@@ -120,6 +121,26 @@ export const refreshController: RequestHandler = async (req, res) => {
 export const registerCompanyController: RequestHandler = async (req, res) => {
   const result = await registerCompany(req.body);
   sendResponse(res, 201, true, 'Company and admin user created successfully', result);
+};
+
+/**
+ * Changes the authenticated user's password.
+ * Verifies currentPassword, hashes newPassword, and blocklists the current JWT.
+ *
+ * @param req.body.currentPassword - The user's current plaintext password.
+ * @param req.body.newPassword - The new password (min 8 chars).
+ * @returns HTTP 200 with envelope `{ success, message, data: null }`.
+ * @throws {AppError} 401 INVALID_CREDENTIALS — when currentPassword is wrong.
+ */
+export const changePasswordController: RequestHandler = async (req, res) => {
+  const { userId } = req.user!;
+  const { currentPassword, newPassword } = req.body as {
+    currentPassword: string;
+    newPassword: string;
+  };
+  const token = req.headers.authorization!.substring(7);
+  await changePassword(userId, currentPassword, newPassword, token);
+  sendResponse(res, 200, true, 'Password changed successfully', null);
 };
 
 /**

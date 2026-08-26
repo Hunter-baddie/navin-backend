@@ -426,6 +426,48 @@ export async function registerCompany(input: {
 }
 
 /**
+ * Changes the authenticated user's password after verifying the current one.
+ * Blocklists the current JWT to force re-login.
+ *
+ * @param userId - Authenticated user's ID.
+ * @param currentPassword - Plaintext current password to verify.
+ * @param newPassword - New plaintext password (min 8 chars).
+ * @param currentJwt - The current JWT string (to blocklist after change).
+ * @throws {AppError} 401 INVALID_CREDENTIALS — when currentPassword is wrong.
+ * @throws {AppError} 401 ERR_AUTH_INVALID — when user not found.
+ */
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+  currentJwt: string
+): Promise<void> {
+  const user = await UserModel.findById(userId).select('+passwordHash');
+  if (!user || user.deletedAt) {
+    throw new AppError(401, 'User not found', 'ERR_AUTH_INVALID');
+  }
+
+  const isValid = await bcrypt.compare(currentPassword, user.passwordHash as string);
+  if (!isValid) {
+    throw new AppError(401, 'Current password is incorrect', 'INVALID_CREDENTIALS');
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  await (user as unknown as { save: () => Promise<void> }).save();
+
+  // Blocklist the current token to force re-login
+  try {
+    const payload = verifyToken(currentJwt) as TokenPayload & { exp?: number };
+    if (payload.jti) {
+      const ttl = payload.exp ? payload.exp - Math.floor(Date.now() / 1000) : TOKEN_TTL_SECONDS;
+      if (ttl > 0) await blockToken(payload.jti, ttl);
+    }
+  } catch {
+    // Token already invalid — nothing to blocklist
+  }
+}
+
+/**
  * Generates a TOTP secret for the authenticated user, encrypts it, persists it to
  * the database, and returns an `otpauth://` QR code data URL for scanning with an
  * authenticator app (Google Authenticator, Authy, etc.).

@@ -13,6 +13,7 @@ import {
   RegisterCompanyBodySchema,
   Verify2faBodySchema,
   Disable2faBodySchema,
+  ChangePasswordBodySchema,
 } from './auth.validation.js';
 import {
   signupController,
@@ -22,6 +23,7 @@ import {
   resetPasswordController,
   refreshController,
   registerCompanyController,
+  changePasswordController,
 } from './auth.controller.js';
 import {
   createApiKeyController,
@@ -60,6 +62,12 @@ authRouter.post(
   asyncHandler(registerCompanyController)
 );
 authRouter.post('/logout', asyncHandler(requireAuth), asyncHandler(logoutController));
+authRouter.patch(
+  '/password',
+  asyncHandler(requireAuth),
+  validateRequest({ body: ChangePasswordBodySchema }),
+  asyncHandler(changePasswordController)
+);
 authRouter.post(
   '/refresh',
   validateRequest({ body: RefreshBodySchema }),
