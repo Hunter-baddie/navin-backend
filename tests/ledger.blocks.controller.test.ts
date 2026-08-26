@@ -1,5 +1,6 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import { AppError } from '../src/shared/http/errors.js';
+import { createLedgerBlock } from '../src/modules/ledger/ledger.repo.js';
 
 const getLedgerBlocksServiceMock = jest.fn();
 const getLedgerBlockByIdServiceMock = jest.fn();
@@ -32,6 +33,16 @@ describe('GET /api/ledger/blocks controller', () => {
 
     expect(getLedgerBlockByIdServiceMock).toHaveBeenCalledWith('lb1');
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('throws AppError 400 with a registered code when milestoneEvent is missing', async () => {
+    await expect(
+      createLedgerBlock({ shipmentId: '507f1f77bcf86cd799439011' }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: 'ERR_BAD_REQUEST',
+      message: 'milestoneEvent or eventType is required',
+    });
   });
 
   it('returns 200 with envelope {success,message,data,meta}', async () => {

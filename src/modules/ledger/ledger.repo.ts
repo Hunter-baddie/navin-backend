@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import { LedgerBlock, type ILedgerBlock } from './ledger.model.js';
 import { MilestoneEvent } from '../../shared/types/shipment.js';
+import { AppError, ErrorCodes } from '../../shared/http/errors.js';
 import { paginateCursor } from '../../shared/utils/pagination.js';
 
 export interface LedgerBlockInput {
@@ -20,7 +21,7 @@ export interface LedgerBlockInput {
 export async function createLedgerBlock(input: LedgerBlockInput): Promise<ILedgerBlock> {
   const milestoneEvent = input.milestoneEvent ?? input.eventType;
   if (!milestoneEvent) {
-    throw new Error('milestoneEvent or eventType is required');
+    throw new AppError(400, 'milestoneEvent or eventType is required', ErrorCodes.BAD_REQUEST);
   }
 
   return LedgerBlock.create({
