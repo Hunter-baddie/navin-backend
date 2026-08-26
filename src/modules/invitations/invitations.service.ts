@@ -16,6 +16,13 @@ import {
   revokeInvitation,
 } from './invitations.repo.js';
 import { InvitationModel, InvitationStatus } from './invitations.model.js';
+import type {
+  AcceptInvitationBody,
+  CreateInvitationBody,
+  InvitationIdParam,
+  InvitationInfoQuery,
+  ListInvitationsQuery,
+} from './invitations.validation.js';
 
 const INVITE_EXPIRY_SECONDS = 48 * 60 * 60; // 48 hours
 
@@ -29,6 +36,7 @@ type InviteTokenPayload = {
   email: string;
   role: string;
   organizationId: string;
+  nonce?: string;
 };
 
 function generateInvitationToken(payload: Omit<InviteTokenPayload, 'type'>): string {
@@ -54,14 +62,19 @@ function verifyInvitationToken(token: string): InviteTokenPayload {
  * Create and send an invitation to a new team member.
  */
 export async function createAndSendInvitation(input: {
-  email: string;
-  role: string;
-  message?: string;
+  email: CreateInvitationBody['email'];
+  role: CreateInvitationBody['role'];
+  message?: CreateInvitationBody['message'];
   inviterId: string;
   inviterRole: string;
   organizationId: string;
 }) {
   // Verify inviter permissions
+  const role = input.role as string;
+  if (role === UserRole.SUPER_ADMIN) {
+    throw new AppError(400, 'Cannot invite SUPER_ADMIN users', 'INVALID_ROLE');
+  }
+
   const allowedByRole: Record<string, string[]> = {
     [UserRole.SUPER_ADMIN]: [
       UserRole.ADMIN,
@@ -74,7 +87,7 @@ export async function createAndSendInvitation(input: {
   };
 
   const allowedRoles = allowedByRole[input.inviterRole] ?? [];
-  if (!allowedRoles.includes(input.role)) {
+  if (!allowedRoles.includes(role)) {
     throw new AppError(
       403,
       'Forbidden: insufficient role to invite this role',
@@ -104,6 +117,7 @@ export async function createAndSendInvitation(input: {
     email: input.email,
     role: input.role,
     organizationId: input.organizationId,
+    nonce: crypto.randomUUID(),
   });
 
   // We need to create the invitation first to get the ID, then regenerate token with ID
@@ -126,6 +140,7 @@ export async function createAndSendInvitation(input: {
     email: input.email,
     role: input.role,
     organizationId: input.organizationId,
+    nonce: crypto.randomUUID(),
   });
 
   const finalTokenHash = hashToken(finalToken);
@@ -160,9 +175,9 @@ export async function createAndSendInvitation(input: {
  */
 export async function listOrganizationInvitations(input: {
   organizationId: string;
-  limit?: number;
-  cursor?: string;
-  status?: string;
+  limit?: ListInvitationsQuery['limit'];
+  cursor?: ListInvitationsQuery['cursor'];
+  status?: ListInvitationsQuery['status'];
 }) {
   const limit = input.limit ?? 20;
   const query: Record<string, unknown> = {
@@ -199,7 +214,7 @@ export async function listOrganizationInvitations(input: {
 /**
  * Resend an invitation (regenerate token and update expiry).
  */
-export async function resendInvitation(invitationId: string, organizationId: string) {
+export async function resendInvitation(invitationId: InvitationIdParam['id'], organizationId: string) {
   const invitation = await findInvitationById(invitationId);
   if (!invitation) {
     throw new AppError(404, 'Invitation not found', ErrorCodes.NOT_FOUND);
@@ -223,6 +238,7 @@ export async function resendInvitation(invitationId: string, organizationId: str
     email: invitation.email,
     role: invitation.role,
     organizationId: invitation.organizationId.toString(),
+    nonce: crypto.randomUUID(),
   });
 
   const newTokenHash = hashToken(newToken);
@@ -258,7 +274,7 @@ export async function resendInvitation(invitationId: string, organizationId: str
 /**
  * Revoke an invitation (set status to REVOKED).
  */
-export async function revokeInvitationById(invitationId: string, organizationId: string) {
+export async function revokeInvitationById(invitationId: InvitationIdParam['id'], organizationId: string) {
   const invitation = await findInvitationById(invitationId);
   if (!invitation) {
     throw new AppError(404, 'Invitation not found', ErrorCodes.NOT_FOUND);
@@ -275,7 +291,7 @@ export async function revokeInvitationById(invitationId: string, organizationId:
 /**
  * Get invitation info from token (public endpoint).
  */
-export async function getInvitationInfo(token: string) {
+export async function getInvitationInfo(token: InvitationInfoQuery['token']) {
   const payload = verifyInvitationToken(token);
 
   const invitation = await findInvitationById(payload.invitationId);
@@ -311,11 +327,7 @@ export async function getInvitationInfo(token: string) {
 /**
  * Accept invitation and create user account.
  */
-export async function acceptInvitationWithPassword(input: {
-  token: string;
-  name: string;
-  password: string;
-}) {
+export async function acceptInvitationWithPassword(input: AcceptInvitationBody) {
   const payload = verifyInvitationToken(input.token);
 
   const invitation = await findInvitationById(payload.invitationId);
