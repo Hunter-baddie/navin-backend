@@ -52,7 +52,7 @@ describe('Storage Adapters', () => {
 
   describe('S3StorageAdapter', () => {
     let adapter: S3StorageAdapter;
-    let mockS3Client: any;
+    let mockS3Client: { send: ReturnType<typeof jest.fn> };
 
     beforeEach(() => {
       // Mock S3 client
@@ -70,11 +70,13 @@ describe('Storage Adapters', () => {
       });
 
       // Inject mock client
-      (adapter as any).client = mockS3Client;
+      (adapter as unknown as { client: typeof mockS3Client }).client = mockS3Client;
     });
 
     it('should build public URL for standard S3', () => {
-      const url = (adapter as any).buildPublicUrl('test-key.jpg');
+      const url = (
+        adapter as unknown as { buildPublicUrl: (key: string) => string }
+      ).buildPublicUrl('test-key.jpg');
 
       expect(url).toBe('https://test-bucket.s3.amazonaws.com/test-key.jpg');
     });
@@ -88,8 +90,10 @@ describe('Storage Adapters', () => {
         provider: 's3',
       });
 
-      (adapter as any).client = mockS3Client;
-      const url = (adapter as any).buildPublicUrl('test-key.jpg');
+      (adapter as unknown as { client: typeof mockS3Client }).client = mockS3Client;
+      const url = (
+        adapter as unknown as { buildPublicUrl: (key: string) => string }
+      ).buildPublicUrl('test-key.jpg');
 
       expect(url).toBe('https://test-bucket.s3.eu-west-1.amazonaws.com/test-key.jpg');
     });
@@ -104,14 +108,16 @@ describe('Storage Adapters', () => {
         provider: 'r2',
       });
 
-      (adapter as any).client = mockS3Client;
-      const url = (adapter as any).buildPublicUrl('test-key.jpg');
+      (adapter as unknown as { client: typeof mockS3Client }).client = mockS3Client;
+      const url = (
+        adapter as unknown as { buildPublicUrl: (key: string) => string }
+      ).buildPublicUrl('test-key.jpg');
 
       expect(url).toBe('https://r2.example.com/test-bucket/test-key.jpg');
     });
 
     it('should handle upload with mocked client', async () => {
-      (adapter as any).client = mockS3Client;
+      (adapter as unknown as { client: typeof mockS3Client }).client = mockS3Client;
 
       // Mock the send method
       mockS3Client.send.mockResolvedValue({});
@@ -156,7 +162,7 @@ describe('Storage Adapters', () => {
 
     it('should handle Cloudinary config', () => {
       expect(adapter).toBeDefined();
-      expect((adapter as any).config).toEqual({
+      expect((adapter as unknown as { config: Record<string, string> }).config).toEqual({
         cloudName: 'test-cloud',
         apiKey: 'test-api-key',
         apiSecret: 'test-api-secret',

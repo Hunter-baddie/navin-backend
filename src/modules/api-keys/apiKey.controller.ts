@@ -103,7 +103,12 @@ export const revokeApiKeyController: RequestHandler = async (req, res) => {
 
   // Verify the key belongs to the caller's org before revoking
   const keys = await listApiKeys(organizationId!);
-  const key = keys.find((k: any) => k._id?.toString() === apiKeyId || k.id === apiKeyId);
+  type ApiKeyRecord = {
+    _id?: string;
+    id?: string;
+    [key: string]: unknown;
+  };
+  const key = keys.find((k: ApiKeyRecord) => k._id?.toString() === apiKeyId || k.id === apiKeyId);
   if (!key) {
     throw new AppError(
       404,

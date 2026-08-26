@@ -16,16 +16,26 @@ export async function createInvitation(input: {
   message?: string;
   invitedBy: string;
   organizationId: string;
+  status?: InvitationStatus;
 }): Promise<IInvitation> {
-  return InvitationModel.create(input);
+  return InvitationModel.create({
+    ...input,
+    status: input.status ?? InvitationStatus.PENDING,
+  });
 }
 
 export async function findInvitationByTokenHash(tokenHash: string): Promise<IInvitation | null> {
-  return InvitationModel.findOne({ tokenHash }).lean();
+  const result = InvitationModel.findOne({ tokenHash });
+  return typeof (result as { lean?: () => Promise<IInvitation | null> }).lean === 'function'
+    ? (result as { lean: () => Promise<IInvitation | null> }).lean()
+    : result;
 }
 
 export async function findInvitationById(id: string): Promise<IInvitation | null> {
-  return InvitationModel.findById(id).lean();
+  const result = InvitationModel.findById(id);
+  return typeof (result as { lean?: () => Promise<IInvitation | null> }).lean === 'function'
+    ? (result as { lean: () => Promise<IInvitation | null> }).lean()
+    : result;
 }
 
 export async function findInvitationsByOrganizationId(
@@ -64,24 +74,36 @@ export async function updateInvitation(
   id: string,
   updates: Partial<IInvitation>
 ): Promise<IInvitation | null> {
-  return InvitationModel.findByIdAndUpdate(id, updates, { new: true }).lean();
+  const result = InvitationModel.findByIdAndUpdate(id, updates, { new: true });
+  return typeof (result as { lean?: () => Promise<IInvitation | null> }).lean === 'function'
+    ? (result as { lean: () => Promise<IInvitation | null> }).lean()
+    : result;
 }
 
 export async function updateInvitationByTokenHash(
   tokenHash: string,
   updates: Partial<IInvitation>
 ): Promise<IInvitation | null> {
-  return InvitationModel.findOneAndUpdate({ tokenHash }, updates, { new: true }).lean();
+  const result = InvitationModel.findOneAndUpdate({ tokenHash }, updates, { new: true });
+  return typeof (result as { lean?: () => Promise<IInvitation | null> }).lean === 'function'
+    ? (result as { lean: () => Promise<IInvitation | null> }).lean()
+    : result;
 }
 
 export async function revokeInvitation(id: string): Promise<IInvitation | null> {
-  return InvitationModel.findByIdAndUpdate(
+  const result = InvitationModel.findByIdAndUpdate(
     id,
     { status: InvitationStatus.REVOKED, updatedAt: new Date() },
     { new: true }
-  ).lean();
+  );
+  return typeof (result as { lean?: () => Promise<IInvitation | null> }).lean === 'function'
+    ? (result as { lean: () => Promise<IInvitation | null> }).lean()
+    : result;
 }
 
 export async function softDeleteInvitation(id: string): Promise<IInvitation | null> {
-  return InvitationModel.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true }).lean();
+  const result = InvitationModel.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true });
+  return typeof (result as { lean?: () => Promise<IInvitation | null> }).lean === 'function'
+    ? (result as { lean: () => Promise<IInvitation | null> }).lean()
+    : result;
 }

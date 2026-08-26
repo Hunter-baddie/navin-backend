@@ -214,7 +214,10 @@ export async function listOrganizationInvitations(input: {
 /**
  * Resend an invitation (regenerate token and update expiry).
  */
-export async function resendInvitation(invitationId: InvitationIdParam['id'], organizationId: string) {
+export async function resendInvitation(
+  invitationId: InvitationIdParam['id'],
+  organizationId: string
+) {
   const invitation = await findInvitationById(invitationId);
   if (!invitation) {
     throw new AppError(404, 'Invitation not found', ErrorCodes.NOT_FOUND);
@@ -274,7 +277,10 @@ export async function resendInvitation(invitationId: InvitationIdParam['id'], or
 /**
  * Revoke an invitation (set status to REVOKED).
  */
-export async function revokeInvitationById(invitationId: InvitationIdParam['id'], organizationId: string) {
+export async function revokeInvitationById(
+  invitationId: InvitationIdParam['id'],
+  organizationId: string
+) {
   const invitation = await findInvitationById(invitationId);
   if (!invitation) {
     throw new AppError(404, 'Invitation not found', ErrorCodes.NOT_FOUND);

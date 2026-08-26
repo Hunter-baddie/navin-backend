@@ -42,8 +42,28 @@ async function getCloudinaryUploader(config: {
   }
 }
 
+type CloudinaryUploadResult = {
+  secure_url: string;
+  public_id: string;
+};
+
+type CloudinaryError = Error | null;
+type CloudinaryUploadCallback = (error: CloudinaryError, result?: CloudinaryUploadResult) => void;
+type CloudinaryDestroyCallback = (error: CloudinaryError, result?: unknown) => void;
+type CloudinaryUploader = {
+  upload_stream: (
+    options: {
+      public_id: string;
+      resource_type: 'video' | 'image';
+      overwrite: boolean;
+    },
+    callback: CloudinaryUploadCallback
+  ) => { end: (buffer: Buffer) => void };
+  destroy: (key: string, callback: CloudinaryDestroyCallback) => void;
+};
+
 export class CloudinaryStorageAdapter implements StorageAdapter {
-  private uploader: any;
+  private uploader: CloudinaryUploader | null = null;
 
   constructor(
     private config: {
@@ -82,14 +102,16 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
             resource_type: mimeType.startsWith('video/') ? 'video' : 'image',
             overwrite: true,
           },
-          (error: any, _result: any) => {
+          (error: Error | null, result?: { secure_url: string; public_id: string }) => {
             if (error) {
               reject(error);
-            } else {
+            } else if (result) {
               resolve({
-                url: _result.secure_url,
-                key: _result.public_id,
+                url: result.secure_url,
+                key: result.public_id,
               });
+            } else {
+              reject(new Error('Cloudinary upload returned no result'));
             }
           }
         );
@@ -115,7 +137,7 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
       await this.initializeUploader();
 
       return new Promise<void>((resolve, reject) => {
-        this.uploader.destroy(key, (error: any, _result: any) => {
+        this.uploader.destroy(key, (error: Error | null, _result?: unknown) => {
           if (error) {
             reject(error);
           } else {

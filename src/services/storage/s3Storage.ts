@@ -34,8 +34,12 @@ async function getS3Client(_config: {
   }
 }
 
+type S3ClientLike = {
+  send: (command: unknown) => Promise<unknown>;
+};
+
 export class S3StorageAdapter implements StorageAdapter {
-  private client: any;
+  private client: S3ClientLike | null = null;
   private bucket: string;
 
   constructor(

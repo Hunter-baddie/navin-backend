@@ -169,7 +169,11 @@ describe('GPS Loss Detection', () => {
     });
 
     it('should handle null/undefined gracefully', async () => {
-      const result = await detectGpsLoss(shipmentId, null as any, undefined as any);
+      const result = await detectGpsLoss(
+        shipmentId,
+        null as unknown as number,
+        undefined as unknown as number
+      );
       expect(result.hasGpsLoss).toBe(false);
       expect(result.consecutiveCount).toBe(0);
     });
