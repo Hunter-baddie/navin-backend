@@ -1,4 +1,4 @@
-import rateLimit, { type Store, type IncrementResponse } from 'express-rate-limit';
+import rateLimit, { type Store, type IncrementResponse } from 'express-rate-limit'; // v8+ bundles its own TypeScript declarations
 import type { Request, Response } from 'express';
 import { sendResponse } from '../http/sendResponse.js';
 import { logger } from '../logger/logger.js';
