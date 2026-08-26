@@ -47,9 +47,8 @@ type CloudinaryUploadResult = {
   public_id: string;
 };
 
-type CloudinaryError = Error | null;
-type CloudinaryUploadCallback = (error: CloudinaryError, result?: CloudinaryUploadResult) => void;
-type CloudinaryDestroyCallback = (error: CloudinaryError, result?: unknown) => void;
+type CloudinaryUploadCallback = (error: unknown, result?: CloudinaryUploadResult) => void;
+type CloudinaryDestroyCallback = (error: unknown, result?: unknown) => void;
 type CloudinaryUploader = {
   upload_stream: (
     options: {
@@ -63,7 +62,7 @@ type CloudinaryUploader = {
 };
 
 export class CloudinaryStorageAdapter implements StorageAdapter {
-  private uploader: CloudinaryUploader | null = null;
+  private uploader: unknown = null;
 
   constructor(
     private config: {
@@ -78,7 +77,7 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
 
     try {
       const { uploader } = await getCloudinaryUploader(this.config);
-      this.uploader = uploader;
+      this.uploader = uploader as CloudinaryUploader;
       logger.info('Cloudinary storage initialized');
     } catch (error) {
       throw new StorageError(
@@ -94,17 +93,22 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
     try {
       await this.initializeUploader();
 
+      const uploader = this.uploader as CloudinaryUploader | null;
+      if (!uploader) {
+        throw new StorageError('Cloudinary uploader is not initialized', 'cloudinary', 500);
+      }
+
       return new Promise((resolve, reject) => {
         // Create readable stream from buffer
-        const stream = this.uploader.upload_stream(
+        const stream = uploader.upload_stream(
           {
             public_id: key,
             resource_type: mimeType.startsWith('video/') ? 'video' : 'image',
             overwrite: true,
           },
-          (error: Error | null, result?: { secure_url: string; public_id: string }) => {
+          (error: unknown, result?: CloudinaryUploadResult) => {
             if (error) {
-              reject(error);
+              reject(error instanceof Error ? error : new Error(String(error)));
             } else if (result) {
               resolve({
                 url: result.secure_url,
@@ -136,10 +140,15 @@ export class CloudinaryStorageAdapter implements StorageAdapter {
     try {
       await this.initializeUploader();
 
+      const uploader = this.uploader as CloudinaryUploader | null;
+      if (!uploader) {
+        return;
+      }
+
       return new Promise<void>((resolve, reject) => {
-        this.uploader.destroy(key, (error: Error | null, _result?: unknown) => {
+        uploader.destroy(key, (error: unknown, _result?: unknown) => {
           if (error) {
-            reject(error);
+            reject(error instanceof Error ? error : new Error(String(error)));
           } else {
             logger.debug(`File deleted from Cloudinary: ${key}`);
             resolve();
