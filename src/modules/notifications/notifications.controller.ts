@@ -7,7 +7,7 @@ import {
   deleteNotificationService,
   getUnreadCountService,
 } from './notifications.service.js';
-import type { GetNotificationsQuery } from './notifications.validation.js';
+import type { GetNotificationsQuery, NotificationIdParam } from './notifications.validation.js';
 
 export const getNotificationsController = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.userId ?? '';
@@ -26,7 +26,7 @@ export const markNotificationReadController = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as unknown as NotificationIdParam;
   const userId = req.user?.userId ?? '';
 
   const notification = await markNotificationReadService(id, userId);
@@ -46,7 +46,7 @@ export const markAllNotificationsReadController = async (
 };
 
 export const deleteNotificationController = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as unknown as NotificationIdParam;
   const userId = req.user?.userId ?? '';
 
   const notification = await deleteNotificationService(id, userId);
