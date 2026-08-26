@@ -112,3 +112,13 @@ export const Disable2faBodySchema = z.object({
 
 export type Verify2faInput = z.infer<typeof Verify2faBodySchema>;
 export type Disable2faInput = z.infer<typeof Disable2faBodySchema>;
+
+/**
+ * Body schema for `PATCH /api/auth/password`.
+ */
+export const ChangePasswordBodySchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE),
+});
+
+export type ChangePasswordInput = z.infer<typeof ChangePasswordBodySchema>;
