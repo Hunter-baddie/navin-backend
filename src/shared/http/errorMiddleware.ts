@@ -39,35 +39,7 @@ export function errorMiddleware(): ErrorRequestHandler {
       return respond(413, 'File too large', ErrorCodes.FILE_TOO_LARGE);
     }
 
-    // Multer MIME type rejection from fileFilter
-    if (err instanceof Error && err.message === 'Invalid MIME type') {
-      return respond(415, 'Unsupported file type', ErrorCodes.INVALID_MIME_TYPE);
-    }
-
-    if (
-      typeof err === 'object' &&
-      err !== null &&
-      'type' in err &&
-      (err as { type?: string }).type === 'entity.too.large'
-    ) {
-      return respond(413, 'Payload too large', ErrorCodes.BAD_REQUEST);
-    }
-
-    // Mongoose duplicate key error
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyValue ?? {})[0] ?? 'field';
-      return respond(400, `Duplicate value for ${field}.`, ErrorCodes.DUPLICATE_KEY);
-    }
-
-    // Mongoose validation error
-    if (err instanceof mongoose.Error.ValidationError) {
-      const message = Object.values(err.errors)
-        .map((e: mongoose.Error.ValidatorError | mongoose.Error.CastError) => e.message)
-        .join(', ');
-      return respond(422, message, ErrorCodes.VALIDATION_ERROR);
-    }
-
-    // App-level operational errors
+    // App-level operational errors should keep their typed status and code.
     if (err instanceof AppError) {
       if (err.code === ErrorCodes.VALIDATION_ERROR) {
         try {
@@ -93,6 +65,34 @@ export function errorMiddleware(): ErrorRequestHandler {
         ...(err.details !== undefined && { details: err.details }),
         ...(isDev && { stack: err.stack }),
       });
+    }
+
+    // Multer MIME type rejection from fileFilter
+    if (err instanceof Error && err.message === 'Invalid MIME type') {
+      return respond(400, 'Unsupported file type', ErrorCodes.INVALID_MIME_TYPE);
+    }
+
+    if (
+      typeof err === 'object' &&
+      err !== null &&
+      'type' in err &&
+      (err as { type?: string }).type === 'entity.too.large'
+    ) {
+      return respond(413, 'Payload too large', ErrorCodes.BAD_REQUEST);
+    }
+
+    // Mongoose duplicate key error
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyValue ?? {})[0] ?? 'field';
+      return respond(400, `Duplicate value for ${field}.`, ErrorCodes.DUPLICATE_KEY);
+    }
+
+    // Mongoose validation error
+    if (err instanceof mongoose.Error.ValidationError) {
+      const message = Object.values(err.errors)
+        .map((e: mongoose.Error.ValidatorError | mongoose.Error.CastError) => e.message)
+        .join(', ');
+      return respond(422, message, ErrorCodes.VALIDATION_ERROR);
     }
 
     // CORS origin rejection

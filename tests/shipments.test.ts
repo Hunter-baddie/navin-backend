@@ -412,6 +412,71 @@ describe('Shipments API (mocked DB)', () => {
     expect(res.status).toBe(403);
   });
 
+  it('should reject invalid document MIME types with a standard 400 AppError envelope', async () => {
+    const users = await import('../src/modules/users/users.model.js');
+    const user = await users.UserModel.create({
+      email: 'invalid-doc@example.com',
+      name: 'Invalid Doc',
+      passwordHash: 'password',
+      role: 'MANAGER',
+      organizationId: 'org1',
+      walletAddress: '0xABC123',
+    });
+
+    const tokenPayload = { userId: String(user._id), role: user.role };
+    const { default: { sign } } = await import('jsonwebtoken');
+    const token = sign(tokenPayload, process.env.JWT_SECRET!);
+
+    const res = await request(app)
+      .post('/api/shipments/123/documents')
+      .set('Authorization', `Bearer ${token}`)
+      .field('type', 'INVOICE')
+      .attach('file', Buffer.from('bad-data'), {
+        filename: 'invalid.txt',
+        contentType: 'text/plain',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({
+      success: false,
+      message: 'Invalid MIME type',
+      data: null,
+      error: { code: 'ERR_INVALID_MIME_TYPE' },
+    });
+  });
+
+  it('should reject invalid photo MIME types with a standard 400 AppError envelope', async () => {
+    const users = await import('../src/modules/users/users.model.js');
+    const user = await users.UserModel.create({
+      email: 'invalid-photo@example.com',
+      name: 'Invalid Photo',
+      passwordHash: 'password',
+      role: 'MANAGER',
+      organizationId: 'org1',
+      walletAddress: '0xABC123',
+    });
+
+    const tokenPayload = { userId: String(user._id), role: user.role };
+    const { default: { sign } } = await import('jsonwebtoken');
+    const token = sign(tokenPayload, process.env.JWT_SECRET!);
+
+    const res = await request(app)
+      .post('/api/shipments/123/photos')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', Buffer.from('bad-data'), {
+        filename: 'invalid.txt',
+        contentType: 'text/plain',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({
+      success: false,
+      message: 'Invalid MIME type',
+      data: null,
+      error: { code: 'ERR_INVALID_MIME_TYPE' },
+    });
+  });
+
   it('should return 401 when trying to upload proof (POST /:id/proof) without a token', async () => {
     const res = await request(app)
       .post('/api/shipments/123/proof')
