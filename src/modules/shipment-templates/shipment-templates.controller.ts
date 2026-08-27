@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { sendResponse } from '../../shared/http/sendResponse.js';
 import { AppError, ErrorCodes } from '../../shared/http/errors.js';
-import type { CreateTemplateInput, UpdateTemplateInput } from './shipment-templates.validation.js';
+import type { CreateTemplateBody, UpdateTemplateBody } from './shipment-templates.validation.js';
 import {
   createTemplateService,
   getTemplatesService,
@@ -64,7 +64,7 @@ export const createTemplate = async (req: Request, res: Response) => {
   if (!organizationId) {
     throw new AppError(403, 'Organization context required', ErrorCodes.FORBIDDEN);
   }
-  const body = req.body as CreateTemplateInput;
+  const body = req.body as CreateTemplateBody;
   const template = await createTemplateService(organizationId, body);
   sendResponse(res, 201, true, 'Template created', template);
 };
@@ -88,7 +88,7 @@ export const updateTemplate = async (req: Request, res: Response) => {
   if (!organizationId) {
     throw new AppError(403, 'Organization context required', ErrorCodes.FORBIDDEN);
   }
-  const body = req.body as UpdateTemplateInput;
+  const body = req.body as UpdateTemplateBody;
   const template = await updateTemplateService(id, organizationId, body);
   sendResponse(res, 200, true, 'Template updated', template);
 };

@@ -18,7 +18,7 @@ export const CreateTemplateBodySchema = z
   })
   .strict();
 
-export type CreateTemplateInput = z.infer<typeof CreateTemplateBodySchema>;
+export type CreateTemplateBody = z.infer<typeof CreateTemplateBodySchema>;
 
 export const UpdateTemplateBodySchema = z
   .object({
@@ -30,7 +30,7 @@ export const UpdateTemplateBodySchema = z
     message: 'At least one field (name or fields) must be provided.',
   });
 
-export type UpdateTemplateInput = z.infer<typeof UpdateTemplateBodySchema>;
+export type UpdateTemplateBody = z.infer<typeof UpdateTemplateBodySchema>;
 
 export const TemplateIdParamSchema = z.object({
   id: z.string().min(1),
