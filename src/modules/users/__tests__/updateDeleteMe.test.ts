@@ -188,9 +188,9 @@ describe('updateCurrentUser', () => {
     const UserModel = (await import('../users.model.js')).UserModel;
     UserModel.findById = jest.fn().mockResolvedValueOnce(null);
 
-    await expect(
-      updateCurrentUser(USER_ID, { fullName: 'New Name' })
-    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(updateCurrentUser(USER_ID, { fullName: 'New Name' })).rejects.toMatchObject({
+      statusCode: 404,
+    });
   });
 
   it('throws 409 when email is already taken', async () => {
@@ -202,9 +202,9 @@ describe('updateCurrentUser', () => {
       email: 'taken@example.com',
     });
 
-    await expect(
-      updateCurrentUser(USER_ID, { email: 'taken@example.com' })
-    ).rejects.toMatchObject({ statusCode: 409 });
+    await expect(updateCurrentUser(USER_ID, { email: 'taken@example.com' })).rejects.toMatchObject({
+      statusCode: 409,
+    });
   });
 });
 

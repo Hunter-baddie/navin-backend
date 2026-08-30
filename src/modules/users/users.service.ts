@@ -362,7 +362,11 @@ export async function updateCurrentUser(
   if (input.companyName !== undefined) {
     const isAdmin = user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN;
     if (!isAdmin) {
-      throw new AppError(403, 'Only ADMIN or SUPER_ADMIN can update the organization name', 'FORBIDDEN');
+      throw new AppError(
+        403,
+        'Only ADMIN or SUPER_ADMIN can update the organization name',
+        'FORBIDDEN'
+      );
     }
     if (user.organizationId) {
       await updateOrganization(user.organizationId.toString(), { name: input.companyName });
